@@ -55,3 +55,24 @@ describe('separate database password', () => {
     expect(new URL(migrationDatabaseUrl()!).password).toBe(url.password);
   });
 });
+
+describe('serverless pooling', () => {
+  it('uses transaction mode on Vercel for a Supabase session-pooler URL, session mode for migrations', async () => {
+    const { databaseUrl } = await import('@/server/config');
+    vi.stubEnv('VERCEL', '1');
+    vi.stubEnv('DATABASE_POOL_MODE', '');
+    vi.stubEnv('DATABASE_PASSWORD', '');
+    vi.stubEnv('MIGRATION_DATABASE_URL', '');
+    vi.stubEnv('DATABASE_URL_UNPOOLED', '');
+    vi.stubEnv('POSTGRES_URL_NON_POOLING', '');
+    vi.stubEnv('DATABASE_URL', 'postgresql://postgres.ref:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres');
+    expect(new URL(databaseUrl()!).port).toBe('6543');
+    expect(databaseOptions(databaseUrl()!).prepare).toBe(false);
+    expect(new URL(migrationDatabaseUrl()!).port).toBe('5432');
+    vi.stubEnv('DATABASE_POOL_MODE', 'session');
+    expect(new URL(databaseUrl()!).port).toBe('5432');
+    vi.stubEnv('VERCEL', '');
+    vi.stubEnv('DATABASE_POOL_MODE', '');
+    expect(new URL(databaseUrl()!).port).toBe('5432');
+  });
+});

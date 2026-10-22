@@ -23,7 +23,15 @@ function isLocalHost(url: URL): boolean {
  */
 export function databaseUrl(): string | undefined {
   const raw = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  return raw ? cleanUrl(raw) : undefined;
+  if (!raw) return undefined;
+  const url = new URL(cleanUrl(raw));
+  // On Vercel many short-lived instances would exhaust Supabase's session-mode pool (15 clients),
+  // so web requests use the same pooler in transaction mode (6543). Migrations switch back to
+  // 5432 in migrationDatabaseUrl(). Set DATABASE_POOL_MODE=session to opt out.
+  if (process.env.VERCEL && url.hostname.endsWith('pooler.supabase.com') && url.port === '5432' && process.env.DATABASE_POOL_MODE !== 'session') {
+    url.port = '6543';
+  }
+  return url.toString();
 }
 
 /**
