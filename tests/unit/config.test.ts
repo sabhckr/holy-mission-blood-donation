@@ -76,3 +76,19 @@ describe('serverless pooling', () => {
     expect(new URL(databaseUrl()!).port).toBe('5432');
   });
 });
+
+describe('derived hashing key', () => {
+  it('refuses to derive the IP-hashing key from a URL without a real password', async () => {
+    const { hashIdentifier } = await import('@/server/domain/ids');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('APP_SECRET', '');
+    vi.stubEnv('VERCEL', '');
+    vi.stubEnv('DATABASE_PASSWORD', '');
+    vi.stubEnv('DATABASE_URL', 'postgresql://postgres.ref:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres');
+    expect(() => hashIdentifier('1.2.3.4')).toThrow();
+    vi.stubEnv('DATABASE_PASSWORD', 'a-real-secret-password');
+    const a = hashIdentifier('1.2.3.4');
+    vi.stubEnv('DATABASE_PASSWORD', 'another-secret-password');
+    expect(hashIdentifier('1.2.3.4')).not.toBe(a);
+  });
+});

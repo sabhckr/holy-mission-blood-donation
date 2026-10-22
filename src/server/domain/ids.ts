@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { databaseUrl } from '../config';
 
 const ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'; // no 0/o/1/l/i
 
@@ -23,10 +24,14 @@ function appSecret(): string {
   const secret = process.env.APP_SECRET;
   if (secret && secret.length >= 32) return secret;
   if (process.env.NODE_ENV === 'production') {
-    // Without APP_SECRET, derive a stable key from the (secret) database URL so a deployment
-    // needs only DATABASE_URL. Setting APP_SECRET is still preferred.
-    const db = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-    if (!db) throw new Error('APP_SECRET (32+ characters) or DATABASE_URL must be set in production');
+    // Without APP_SECRET, derive a stable key from the database connection details including the
+    // password (DATABASE_PASSWORD or the password inside DATABASE_URL), which are secret.
+    // Refuse if there is no real password, because the key would then be guessable.
+    const db = databaseUrl();
+    const password = db ? decodeURIComponent(new URL(db).password) : '';
+    if (!db || !password || password === '[YOUR-PASSWORD]') {
+      throw new Error('APP_SECRET (32+ characters) or a database password must be set in production');
+    }
     return createHash('sha256').update(`holy-mission-app-secret:${db}`).digest('hex');
   }
   return 'development-only-secret-do-not-use-in-production';
