@@ -1,0 +1,61 @@
+import { defineMessages } from '../define';
+
+type D = Record<string, string | number | null>;
+const s = (v: unknown) => (v == null ? '' : String(v));
+
+export const notifications = defineMessages({
+  bn: {
+    title: 'নোটিফিকেশন',
+    empty: 'এখনো কোনো নোটিফিকেশন নেই।',
+    unread: (n: string) => `${n}টি নতুন`,
+    fallbackTitle: 'নতুন আপডেট',
+    externalNotConfigured: 'এসএমএস/ইমেইল পাঠানোর ব্যবস্থা এখনো চালু হয়নি, তাই শুধু এই ওয়েবসাইটে নোটিফিকেশন দেখানো হচ্ছে।',
+    kinds: {
+      contact_request_received: { title: 'নতুন যোগাযোগের অনুরোধ', body: (d: D) => `${s(d.requester)} আপনার সাথে যোগাযোগ করতে চান। অনুরোধটি দেখে উত্তর দিন।` },
+      contact_request_accepted: { title: 'অনুরোধ গ্রহণ করা হয়েছে', body: (d: D) => `${s(d.donor)} আপনার অনুরোধ গ্রহণ করেছেন। যোগাযোগের তথ্য দেখুন।` },
+      contact_request_declined: { title: 'অনুরোধ গ্রহণ করা হয়নি', body: (d: D) => `${s(d.donor)} এখন সাহায্য করতে পারছেন না। অন্য রক্তদাতা খুঁজুন বা সংগঠনের সাহায্য নিন।` },
+      donation_verified: { title: 'রক্তদানের রেকর্ড যাচাই হয়েছে', body: (d: D) => `${s(d.date)} তারিখের রেকর্ডটি যাচাই করা হয়েছে।` },
+      donation_rejected: { title: 'রক্তদানের রেকর্ড যাচাই হয়নি', body: (d: D) => `${s(d.date)} তারিখের রেকর্ডটি যাচাই করা যায়নি।` },
+      donor_verified: { title: 'প্রোফাইল যাচাই হয়েছে', body: () => 'আপনার রক্তদাতা প্রোফাইল যাচাই করা হয়েছে।' },
+      membership_approved: { title: 'সংগঠনে যোগদান অনুমোদিত', body: (d: D) => `আপনি এখন ${s(d.community)}-এর সদস্য।` },
+      membership_rejected: { title: 'যোগদানের আবেদন গ্রহণ হয়নি', body: (d: D) => `${s(d.community)} আপনার আবেদন গ্রহণ করেনি।` },
+      membership_requested: { title: 'নতুন সদস্যের আবেদন', body: (d: D) => `${s(d.name)} ${s(d.community)}-এ যোগ দিতে চান।` },
+      community_approved: { title: 'সংগঠন অনুমোদিত হয়েছে', body: (d: D) => `${s(d.community)} এখন অনুমোদিত। আপনি সংগঠন পরিচালনা শুরু করতে পারেন।` },
+      community_suspended: { title: 'সংগঠন স্থগিত', body: (d: D) => `${s(d.community)} সাময়িকভাবে স্থগিত করা হয়েছে।` },
+      community_rejected: { title: 'সংগঠনের আবেদন গ্রহণ হয়নি', body: (d: D) => `${s(d.community)}-এর আবেদন অনুমোদন পায়নি।` },
+      request_assigned: { title: 'রক্তের অনুরোধ আপনার দায়িত্বে', body: (d: D) => `${s(d.group)} রক্তের একটি অনুরোধ (${s(d.place)}) আপনার সংগঠনকে দেওয়া হয়েছে।` },
+      request_escalated: { title: 'আরেক সংগঠন সাহায্য চাইছে', body: (d: D) => `${s(d.group)} রক্তের একটি অনুরোধ (${s(d.place)}) আপনাদের কাছে পাঠানো হয়েছে।` },
+      request_response: { title: 'একজন রক্তদাতা সাড়া দিয়েছেন', body: (d: D) => `${s(d.group)} রক্তের অনুরোধে একজন রক্তদাতা সাহায্য করতে চেয়েছেন। এখনো নিশ্চিত নয় — কথা বলে নিশ্চিত হোন।` },
+      request_status_changed: { title: 'অনুরোধের অবস্থা বদলেছে', body: (d: D) => `অনুরোধের নতুন অবস্থা: ${s(d.status)}` },
+      availability_expiring: { title: 'আপনি কি এখনো রক্ত দিতে পারবেন?', body: () => 'আপনার প্রস্তুত থাকার তথ্যের মেয়াদ শেষ হয়ে গেছে। আবার নিশ্চিত করুন।' },
+      deletion_completed: { title: 'অ্যাকাউন্ট মুছে ফেলা হয়েছে', body: () => 'আপনার অনুরোধ অনুযায়ী তথ্য মুছে ফেলা হয়েছে।' },
+    },
+  },
+  en: {
+    title: 'Notifications',
+    empty: 'No notifications yet.',
+    unread: (n: string) => `${n} new`,
+    fallbackTitle: 'New update',
+    externalNotConfigured: 'SMS/email sending is not set up yet, so notifications are shown on this website only.',
+    kinds: {
+      contact_request_received: { title: 'New contact request', body: (d: D) => `${s(d.requester)} would like to contact you. Please review and reply.` },
+      contact_request_accepted: { title: 'Request accepted', body: (d: D) => `${s(d.donor)} accepted your request. You can now see their contact details.` },
+      contact_request_declined: { title: 'Request declined', body: (d: D) => `${s(d.donor)} cannot help right now. Try other donors or ask a community for help.` },
+      donation_verified: { title: 'Donation record verified', body: (d: D) => `Your donation record for ${s(d.date)} has been verified.` },
+      donation_rejected: { title: 'Donation record not verified', body: (d: D) => `Your donation record for ${s(d.date)} could not be verified.` },
+      donor_verified: { title: 'Profile verified', body: () => 'Your donor profile has been verified.' },
+      membership_approved: { title: 'Membership approved', body: (d: D) => `You are now a member of ${s(d.community)}.` },
+      membership_rejected: { title: 'Membership not approved', body: (d: D) => `${s(d.community)} did not approve your application.` },
+      membership_requested: { title: 'New membership application', body: (d: D) => `${s(d.name)} wants to join ${s(d.community)}.` },
+      community_approved: { title: 'Community approved', body: (d: D) => `${s(d.community)} is now approved. You can start managing it.` },
+      community_suspended: { title: 'Community suspended', body: (d: D) => `${s(d.community)} has been suspended for now.` },
+      community_rejected: { title: 'Community application not approved', body: (d: D) => `The application for ${s(d.community)} was not approved.` },
+      request_assigned: { title: 'A blood request was assigned to you', body: (d: D) => `A request for ${s(d.group)} blood (${s(d.place)}) was assigned to your community.` },
+      request_escalated: { title: 'Another community needs help', body: (d: D) => `A request for ${s(d.group)} blood (${s(d.place)}) was passed to your community.` },
+      request_response: { title: 'A donor responded', body: (d: D) => `A donor offered to help with a ${s(d.group)} blood request. This is not confirmed yet — please talk to them first.` },
+      request_status_changed: { title: 'Request status changed', body: (d: D) => `New status: ${s(d.status)}` },
+      availability_expiring: { title: 'Can you still donate?', body: () => 'Your availability confirmation has expired. Please confirm again.' },
+      deletion_completed: { title: 'Account deleted', body: () => 'Your information has been deleted as you asked.' },
+    },
+  },
+});
