@@ -33,6 +33,8 @@ describe('shortName', () => {
   it('skips honorific prefixes and abbreviates the last name', () => {
     expect(shortName('Md. Rakib Hasan')).toBe('Rakib H.');
     expect(shortName('মোঃ রাকিব হাসান')).toBe('রাকিব হা.');
+    expect(shortName('রাকিব অ্যান্থনি')).toBe('রাকিব অ্যা.');
+    expect(shortName('সুমন ক্ষেত্রী')).toBe('সুমন ক্ষে.');
     expect(shortName('Nusrat')).toBe('Nusrat');
   });
 });

@@ -31,6 +31,8 @@ export interface DonorFacts {
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected';
   availability: AvailabilityState;
   availabilityConfirmedAt: Date | null;
+  /** Who last set availability: the donor, or staff (an override that must be labelled as such). */
+  availabilitySource?: 'donor' | 'staff' | null;
   consents: DonorConsentsView;
   stats?: { verifiedCount: number; reportedCount: number; lastDonation: string | null };
   communities?: { slug: string; name: string }[];
@@ -52,6 +54,7 @@ export interface DonorView {
   verificationStatus: DonorFacts['verificationStatus'];
   availability: AvailabilityState;
   availabilityConfirmedAt: Date | null;
+  availabilitySource: 'donor' | 'staff' | null;
   stats: NonNullable<DonorFacts['stats']> | null;
   communities: NonNullable<DonorFacts['communities']> | null;
   phoneAccess: PhoneAccess;
@@ -61,10 +64,17 @@ export interface DonorView {
 
 const NAME_PREFIXES = new Set(['md', 'md.', 'mohammad', 'mohammed', 'muhammad', 'mohd', 'mst', 'mst.', 'mosammat', 'মো', 'মো.', 'মোঃ', 'মোহাম্মদ', 'মুহাম্মদ', 'মোসাম্মৎ', 'মোছা', 'মোছাঃ', 'মোসাঃ']);
 
+const BENGALI_VIRAMA = '\u09CD';
+
+/** First user-perceived letter. A Bengali letter ending in the virama (as in "অ্যা") joins the next one. */
 function firstGrapheme(word: string): string {
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-  for (const { segment } of segmenter.segment(word)) return segment;
-  return '';
+  let out = '';
+  for (const { segment } of segmenter.segment(word)) {
+    out += segment;
+    if (!segment.endsWith(BENGALI_VIRAMA)) break;
+  }
+  return out;
 }
 
 /** "Md. Rakib Hasan" -> "Rakib H." ; "মোঃ রাকিব হাসান" -> "রাকিব হা." */
@@ -103,6 +113,7 @@ export function projectDonor(donor: DonorFacts, viewer: ViewerLevel): DonorView 
     verificationStatus: donor.verificationStatus,
     availability: donor.availability,
     availabilityConfirmedAt: donor.availabilityConfirmedAt,
+    availabilitySource: donor.availabilitySource ?? null,
     stats: donor.stats && canSee(c.donationHistoryVisibility, viewer) ? donor.stats : null,
     communities: donor.communities && canSee(c.communityVisibility, viewer) ? donor.communities : null,
     phoneAccess,

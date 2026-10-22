@@ -14,7 +14,61 @@ import { getSettings } from '@/server/services/settings';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
 import { EligibilityCard } from '@/components/account/EligibilityCard';
 import { Alert, AvailabilityBadge, Badge, BloodGroupBadge, Stat } from '@/components/ui';
+import type { Messages } from '@/i18n/messages';
+import type { donorProfiles } from '@/server/db/schema';
 import { reactivateAction, setAvailabilityAction, setListingPausedAction } from './actions';
+
+type DonorRow = typeof donorProfiles.$inferSelect;
+type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+
+const REGISTRATION_TONE: Record<DonorRow['registrationStatus'], Tone> = { pending: 'warning', approved: 'success', rejected: 'danger' };
+const LISTING_TONE: Record<DonorRow['status'], Tone> = { active: 'success', paused: 'neutral', restricted: 'danger', removed: 'danger' };
+
+/**
+ * Registration review status (pending / approved / rejected). Kept apart from the listing status,
+ * availability and profile verification, which are separate things.
+ */
+function RegistrationBanner({ donor, t }: { donor: Pick<DonorRow, 'registrationStatus' | 'registrationNote'>; t: Messages }) {
+  const d = t.account.dashboard;
+  if (donor.registrationStatus === 'pending') {
+    return (
+      <Alert tone="info" title={d.registrationPendingTitle}>
+        <p>{d.registrationPendingBody}</p>
+        <p style={{ marginBottom: 'var(--space-1)' }}>{d.registrationPendingMeanwhile}</p>
+        <ul className="stack-sm" style={{ paddingLeft: '1.2rem', margin: 0 }}>
+          <li>
+            <Link href="/account/profile">{d.registrationPendingStepProfile}</Link>
+          </li>
+          <li>
+            <Link href="/account/privacy">{d.registrationPendingStepPrivacy}</Link>
+          </li>
+          <li>
+            <Link href="/account/donations">{d.registrationPendingStepHistory}</Link>
+          </li>
+          <li>
+            <a href="#availability-title">{d.registrationPendingStepAvailability}</a>
+          </li>
+        </ul>
+      </Alert>
+    );
+  }
+  if (donor.registrationStatus === 'rejected') {
+    return (
+      <Alert tone="warning" title={d.registrationRejectedTitle}>
+        <p>{donor.registrationNote ? d.registrationReason(donor.registrationNote) : d.registrationNoReason}</p>
+        <p>{d.registrationRejectedBody}</p>
+        <Link className="btn btn-primary btn-sm" href="/account/profile">
+          {d.registrationRejectedCta}
+        </Link>
+      </Alert>
+    );
+  }
+  return (
+    <Alert tone="success" title={d.registrationApprovedTitle}>
+      <p style={{ margin: 0 }}>{d.registrationApprovedBody}</p>
+    </Alert>
+  );
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -53,6 +107,8 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
     getSettings(),
     getLocationIndex(),
   ]);
+  // Deactivated or removed by staff: the donor cannot change availability or the listing.
+  const staffHidden = !!overview && (overview.donor.status === 'restricted' || overview.donor.status === 'removed');
 
   return (
     <>
@@ -83,36 +139,56 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
         </section>
       ) : (
         <>
+          <RegistrationBanner donor={overview.donor} t={t} />
+
+          {staffHidden && (
+            <Alert tone="warning" title={overview.donor.status === 'removed' ? d.listingRemovedTitle : d.listingRestrictedTitle}>
+              <p>{d.listingStaffBody}</p>
+              <p>{overview.donor.restrictedReason ? d.registrationReason(overview.donor.restrictedReason) : d.registrationNoReason}</p>
+              <p style={{ margin: 0 }}>
+                {d.listingStaffContact} <Link href="/contact">{d.contactUs}</Link>
+              </p>
+            </Alert>
+          )}
+
           <div className="grid grid-2">
             <section className="card stack" aria-labelledby="availability-title">
               <h2 id="availability-title" className="cluster-sm" style={{ fontSize: '1.15rem' }}>
                 <HeartPulse size={20} aria-hidden="true" />
                 {d.availabilityTitle}
               </h2>
-              <AvailabilityBadge state={overview.availability} t={t} />
-              {overview.availability === 'restricted' ? (
-                <p>{d.restrictedNote}</p>
+              <div>
+                <AvailabilityBadge state={overview.availability} t={t} />
+              </div>
+              {staffHidden ? (
+                <p style={{ margin: 0 }}>{d.availabilityLocked}</p>
               ) : (
                 <>
                   {overview.donor.availabilityConfirmedAt ? (
-                    <p className="small" style={{ margin: 0 }}>
-                      {d.availabilityConfirmed(instantDate(overview.donor.availabilityConfirmedAt))}
-                      {overview.availability === 'available' && overview.donor.availabilityExpiresAt && (
-                        <>
-                          <br />
-                          {d.availabilityValidUntil(instantDate(overview.donor.availabilityExpiresAt))}
-                        </>
-                      )}
-                    </p>
+                    overview.donor.availabilitySource === 'staff' ? (
+                      <Alert tone="info">
+                        <p style={{ margin: 0 }}>{d.availabilitySourceStaff}</p>
+                        <p className="small" style={{ margin: 0 }}>
+                          {t.common.availability.lastUpdated(instantDate(overview.donor.availabilityConfirmedAt))}
+                        </p>
+                      </Alert>
+                    ) : (
+                      <p className="small" style={{ margin: 0 }}>
+                        {d.availabilitySourceDonor} · {t.common.availability.lastUpdated(instantDate(overview.donor.availabilityConfirmedAt))}
+                      </p>
+                    )
                   ) : (
                     <p className="small" style={{ margin: 0 }}>
                       {d.availabilityNever}
                     </p>
                   )}
-                  {overview.availability === 'needs_confirmation' && overview.donor.availabilityConfirmedAt && (
-                    <Alert tone="warning">{d.availabilityExpired}</Alert>
+                  {overview.availability === 'available' && overview.donor.availabilityExpiresAt && (
+                    <p className="small" style={{ margin: 0 }}>
+                      {d.availabilityValidUntil(instantDate(overview.donor.availabilityExpiresAt))}
+                    </p>
                   )}
-                  <div className="cluster-sm">
+                  {overview.availability === 'unknown' && overview.donor.availabilityConfirmedAt && <Alert tone="warning">{d.availabilityExpired}</Alert>}
+                  <div className="cluster-sm" role="group" aria-label={d.availabilityButtonsLabel}>
                     <ActionForm action={setAvailabilityAction} className="stack-sm">
                       <input type="hidden" name="status" value="available" />
                       <SubmitButton label={d.availableButton} pendingLabel={t.common.actions.saving} className="btn btn-primary" />
@@ -123,7 +199,7 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
                     </ActionForm>
                   </div>
                   <p className="small muted" style={{ margin: 0 }}>
-                    {d.availabilityExplain(n(settings.availabilityExpiryDays))}
+                    {d.availabilityExplain(n(settings.availabilityExpiryDays))} {d.availabilitySearchNote}
                   </p>
                 </>
               )}
@@ -135,11 +211,21 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
             <h2 id="listing-title" style={{ fontSize: '1.15rem' }}>
               {d.listingTitle}
             </h2>
-            {overview.donor.status === 'restricted' ? (
-              <p>{d.restrictedNote}</p>
+            <dl className="dl">
+              <dt>{d.registrationLabel}</dt>
+              <dd>
+                <Badge tone={REGISTRATION_TONE[overview.donor.registrationStatus]}>{t.common.registrationStatus[overview.donor.registrationStatus]}</Badge>
+              </dd>
+              <dt>{d.listingStatusLabel}</dt>
+              <dd>
+                <Badge tone={LISTING_TONE[overview.donor.status]}>{t.common.listingStatus[overview.donor.status]}</Badge>
+              </dd>
+            </dl>
+            {staffHidden ? (
+              <p style={{ margin: 0 }}>{d.listingStaffBody}</p>
             ) : overview.donor.status === 'paused' ? (
               <>
-                <p>{d.listingPaused}</p>
+                <p style={{ margin: 0 }}>{d.listingPaused}</p>
                 <ActionForm action={setListingPausedAction} className="stack-sm">
                   <input type="hidden" name="paused" value="false" />
                   <SubmitButton label={d.resumeButton} pendingLabel={t.common.actions.saving} className="btn btn-primary" />
@@ -147,13 +233,19 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
               </>
             ) : (
               <>
-                <p>{overview.consents.listedInSearch ? d.listingActive : d.listingNotListed}</p>
+                <p style={{ margin: 0 }}>
+                  {!overview.consents.listedInSearch
+                    ? d.listingNotListed
+                    : overview.donor.registrationStatus !== 'approved'
+                      ? d.listingNotApproved
+                      : overview.availability === 'available'
+                        ? d.listingVisible
+                        : d.listingNeedsAvailable}
+                </p>
                 <div className="cluster-sm">
-                  {overview.consents.listedInSearch && (
-                    <Link className="btn btn-sm" href={`/donors/${overview.donor.publicId}`}>
-                      {t.common.actions.view}
-                    </Link>
-                  )}
+                  <Link className="btn btn-sm" href={`/donors/${overview.donor.publicId}`}>
+                    {d.viewMyProfile}
+                  </Link>
                   <ActionForm action={setListingPausedAction} className="stack-sm">
                     <input type="hidden" name="paused" value="true" />
                     <SubmitButton label={d.pauseButton} pendingLabel={t.common.actions.saving} className="btn btn-sm" />

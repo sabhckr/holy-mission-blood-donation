@@ -57,5 +57,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const url = migrationDatabaseUrl();
   if (url) process.env.DATABASE_URL = url;
   console.log('Seeded locations', await seedLocations());
+  const { seedInitialOperatingArea } = await import('../src/server/services/operating-areas');
+  console.log('Initial operating area (Lakshmipur) added:', await seedInitialOperatingArea());
   await closeDb();
 }

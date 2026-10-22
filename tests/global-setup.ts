@@ -10,5 +10,7 @@ export default async function setup() {
   const { closeDb } = await import('../src/server/db/client');
   await runMigrations();
   await seedLocations();
+  const { seedInitialOperatingArea } = await import('../src/server/services/operating-areas');
+  await seedInitialOperatingArea();
   await closeDb();
 }

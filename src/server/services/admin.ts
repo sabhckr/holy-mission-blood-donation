@@ -20,10 +20,14 @@ import {
 import { PAGE_SIZE } from '../domain/constants';
 import { normalizeBdPhone } from '../domain/phone';
 import { AppError, forbidden, notFound } from '../errors';
-import { isAdmin, type Actor } from '../policy';
+import { can, isAdmin, type Actor, type PlatformPermission } from '../policy';
 import { activeAdminCount, confirmPassword, type ClientMeta } from './accounts';
 import { audit } from './audit';
 import { donorAvailability } from './donors';
+
+function requirePermission(actor: Actor | null, permission: PlatformPermission): asserts actor is Actor {
+  if (!can(actor, permission)) throw forbidden();
+}
 
 function requireAdmin(actor: Actor | null): asserts actor is Actor {
   if (!isAdmin(actor)) throw forbidden();
@@ -34,7 +38,7 @@ function requireAdmin(actor: Actor | null): asserts actor is Actor {
 // ---------------------------------------------------------------------------
 
 export async function platformStats(actor: Actor) {
-  requireAdmin(actor);
+  requirePermission(actor, 'overview.view');
   const [donors] = await db
     .select({
       total: sql<number>`count(*)::int`,
@@ -49,7 +53,7 @@ export async function platformStats(actor: Actor) {
     .select({ bloodGroup: donorProfiles.bloodGroup, n: sql<number>`count(*)::int` })
     .from(donorProfiles)
     .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
-    .where(and(eq(donorConsents.listedInSearch, true), eq(donorProfiles.status, 'active')))
+    .where(and(eq(donorConsents.listedInSearch, true), eq(donorProfiles.registrationStatus, 'approved'), eq(donorProfiles.status, 'active')))
     .groupBy(donorProfiles.bloodGroup)
     .orderBy(donorProfiles.bloodGroup);
   const [records] = await db
@@ -80,7 +84,7 @@ export async function platformStats(actor: Actor) {
 // Users
 // ---------------------------------------------------------------------------
 
-export async function searchUsers(actor: Actor, filters: { q?: string | null; role?: 'user' | 'admin' | null; status?: 'active' | 'deactivated' | 'suspended' | 'deleted' | null; page?: number }) {
+export async function searchUsers(actor: Actor, filters: { q?: string | null; role?: 'user' | 'admin' | 'moderator' | null; status?: 'active' | 'deactivated' | 'suspended' | 'deleted' | null; page?: number }) {
   requireAdmin(actor);
   const conds: SQL[] = [];
   if (filters.q) {
@@ -164,14 +168,14 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'activ
 }
 
 /** Granting or removing platform admin rights requires the acting admin's password. */
-export async function setUserRole(actor: Actor, userId: string, role: 'user' | 'admin', password: string, meta: ClientMeta = {}) {
+export async function setUserRole(actor: Actor, userId: string, role: 'user' | 'admin' | 'moderator', password: string, meta: ClientMeta = {}) {
   requireAdmin(actor);
   if (!(await confirmPassword(actor.userId, password))) throw new AppError('forbidden', 'reauth_failed', { password: 'wrongPassword' });
   await db.transaction(async (tx) => {
     const [user] = await tx.select().from(users).where(eq(users.id, userId)).for('update');
     if (!user || user.status === 'deleted') throw notFound();
     if (user.role === role) return;
-    if (user.role === 'admin' && role === 'user' && (await activeAdminCount(tx)) <= 1) throw new AppError('invalid_state', 'last_admin');
+    if (user.role === 'admin' && role !== 'admin' && (await activeAdminCount(tx)) <= 1) throw new AppError('invalid_state', 'last_admin');
     await tx.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId));
     await tx.delete(sessions).where(eq(sessions.userId, userId)); // new privileges take effect on next sign-in
     await audit(tx, { actor, action: 'admin.role_changed', targetType: 'user', targetId: userId, metadata: { from: user.role, to: role }, ipHash: meta.ipHash });
@@ -206,7 +210,7 @@ export async function setDonorRestriction(actor: Actor, donorId: string, restric
  * contact number on two different accounts. Pairs already reviewed are left out.
  */
 export async function duplicateCandidates(actor: Actor) {
-  requireAdmin(actor);
+  requirePermission(actor, 'duplicates.review');
   const a = alias(donorProfiles, 'a');
   const b = alias(donorProfiles, 'b');
   const rows = await db
@@ -236,7 +240,7 @@ export async function duplicateCandidates(actor: Actor) {
 }
 
 export async function reviewDuplicate(actor: Actor, donorA: string, donorB: string, decision: 'not_duplicate' | 'duplicate_resolved', note: string | null, meta: ClientMeta = {}) {
-  requireAdmin(actor);
+  requirePermission(actor, 'duplicates.review');
   const [first, second] = donorA < donorB ? [donorA, donorB] : [donorB, donorA];
   await db.transaction(async (tx) => {
     await tx
@@ -388,7 +392,7 @@ export async function exportData(actor: Actor, kind: ExportKind, password: strin
       .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
       .innerJoin(district, eq(district.id, donorProfiles.districtId))
       .innerJoin(division, eq(division.id, donorProfiles.divisionId))
-      .where(and(eq(donorConsents.listedInSearch, true), eq(donorProfiles.status, 'active')))
+      .where(and(eq(donorConsents.listedInSearch, true), eq(donorProfiles.registrationStatus, 'approved'), eq(donorProfiles.status, 'active')))
       .groupBy(division.nameEn, district.nameEn, donorProfiles.bloodGroup)
       .orderBy(division.nameEn, district.nameEn, donorProfiles.bloodGroup);
     result = {
@@ -420,7 +424,7 @@ export async function exportData(actor: Actor, kind: ExportKind, password: strin
       .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
       .innerJoin(district, eq(district.id, donorProfiles.districtId))
       .innerJoin(division, eq(division.id, donorProfiles.divisionId))
-      .where(and(eq(donorConsents.listedInSearch, true), eq(donorProfiles.status, 'active')))
+      .where(and(eq(donorConsents.listedInSearch, true), eq(donorProfiles.registrationStatus, 'approved'), eq(donorProfiles.status, 'active')))
       .orderBy(division.nameEn, district.nameEn);
     const now = new Date();
     result = {
@@ -433,7 +437,7 @@ export async function exportData(actor: Actor, kind: ExportKind, password: strin
           r.division,
           r.district,
           r.verification,
-          r.availabilityStatus === 'available' && r.availabilityExpiresAt && r.availabilityExpiresAt > now ? 'available' : r.availabilityStatus === 'unavailable' ? 'unavailable' : 'needs_confirmation',
+          r.availabilityStatus === 'available' && r.availabilityExpiresAt && r.availabilityExpiresAt > now ? 'available' : r.availabilityStatus === 'unavailable' ? 'unavailable' : 'unknown',
           r.registered.toISOString().slice(0, 10),
         ]),
       ),

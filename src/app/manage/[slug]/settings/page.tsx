@@ -37,6 +37,10 @@ export default async function ManageSettingsPage({ params }: { params: Promise<{
             facebookUrl: community.facebookUrl,
             showPublicContact: community.showPublicContact,
             coordinatorContactPreference: community.coordinatorContactPreference,
+            representativeName: community.representativeName,
+            representativeRole: community.representativeRole,
+            representativePhone: community.representativePhone,
+            verificationInfo: community.verificationInfo,
           }}
         />
         <SubmitButton label={t.common.actions.save} pendingLabel={t.common.actions.saving} className="btn btn-primary btn-lg" />

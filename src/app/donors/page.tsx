@@ -27,7 +27,6 @@ const filtersSchema = z.object({
   district: id,
   upazila: id,
   locality: z.string().trim().max(60).optional().catch(undefined),
-  available: z.literal('1').optional().catch(undefined),
   verified: z.literal('1').optional().catch(undefined),
   sort: z.enum(['best', 'recent', 'newest']).optional().catch(undefined),
   page: z.coerce.number().int().min(1).max(500).optional().catch(undefined),
@@ -52,7 +51,6 @@ export default async function DonorSearchPage({ searchParams }: { searchParams: 
           districtId: filters.district ?? null,
           upazilaId: filters.upazila ?? null,
           locality: filters.locality || null,
-          availableOnly: filters.available === '1',
           verifiedOnly: filters.verified === '1',
           sort: filters.sort ?? 'best',
           page: filters.page ?? 1,
@@ -69,7 +67,6 @@ export default async function DonorSearchPage({ searchParams }: { searchParams: 
     district: filters.district?.toString(),
     upazila: filters.upazila?.toString(),
     locality: filters.locality,
-    available: filters.available,
     verified: filters.verified,
     sort: filters.sort,
   };
@@ -106,10 +103,6 @@ export default async function DonorSearchPage({ searchParams }: { searchParams: 
                   <input id="sf-locality" className="input" name="locality" defaultValue={filters.locality ?? ''} maxLength={60} />
                 </div>
                 <label className="check">
-                  <input type="checkbox" name="available" value="1" defaultChecked={filters.available === '1'} />
-                  <span>{t.search.availableOnly}</span>
-                </label>
-                <label className="check">
                   <input type="checkbox" name="verified" value="1" defaultChecked={filters.verified === '1'} />
                   <span>{t.search.verifiedOnly}</span>
                 </label>
@@ -135,6 +128,9 @@ export default async function DonorSearchPage({ searchParams }: { searchParams: 
           {limited && <Alert tone="warning">{t.search.rateLimited}</Alert>}
           {result && (
             <>
+              <Alert tone="info">
+                <p>{t.search.onlyAvailableNote}</p>
+              </Alert>
               <p style={{ fontWeight: 700, margin: 0 }}>{t.search.resultCount(n(result.total))}</p>
               {!filters.group && !filters.district && !filters.division && <p className="small muted">{t.search.noFilters}</p>}
               <p className="small muted">{t.search.privacyNote}</p>
@@ -163,7 +159,8 @@ export default async function DonorSearchPage({ searchParams }: { searchParams: 
                           <br />
                           <span className="small muted">{t.search.fallbackCount(n(w.total), n(w.available))}</span>
                         </span>
-                        {w.total > 0 && (
+                        {/* Search only lists donors who can donate now, so only offer a search that will find someone. */}
+                        {w.available > 0 && (
                           <Link className="btn btn-sm" href={widerHref(w.level)}>
                             {t.search.fallbackSearchThere}
                           </Link>
@@ -177,6 +174,7 @@ export default async function DonorSearchPage({ searchParams }: { searchParams: 
                     <Building2 size={18} aria-hidden="true" />
                     {t.search.fallbackCommunities}
                   </h3>
+                  <p className="small muted">{t.search.fallbackCommunitiesHint}</p>
                   {fallback.communities.length === 0 ? (
                     <p className="muted">{t.search.fallbackNoCommunities}</p>
                   ) : (

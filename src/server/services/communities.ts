@@ -16,8 +16,10 @@ import { PAGE_SIZE, type BloodGroup, type CommunityKind } from '../domain/consta
 import { ageOn, todayInBangladesh } from '../domain/dates';
 import { projectDonor } from '../domain/donor-view';
 import { randomPublicId, slugify } from '../domain/ids';
+import { normalizeBdPhone } from '../domain/phone';
 import { AppError, conflict, forbidden, isUniqueViolation, notFound, validationError } from '../errors';
 import {
+  can,
   canChangeMemberRole,
   canRemoveMember,
   communityCapabilities,
@@ -49,6 +51,12 @@ export interface CommunityInput {
   facebookUrl: string | null;
   showPublicContact: boolean;
   coordinatorContactPreference: 'in_app' | 'phone' | 'both';
+  /** Responsible representative (required on save) and how admins can verify the organisation.
+   *  Private: shown only to platform admins and the organisation's own leaders. */
+  representativeName?: string | null;
+  representativeRole?: string | null;
+  representativePhone?: string | null;
+  verificationInfo?: string | null;
 }
 
 async function validateCommunityInput(input: CommunityInput, executor: Executor) {
@@ -64,6 +72,10 @@ async function validateCommunityInput(input: CommunityInput, executor: Executor)
   if ((input.coordinatorContactPreference !== 'in_app' || input.showPublicContact) && !input.publicPhone && !input.publicEmail) {
     errors.publicPhone = 'required';
   }
+  if (!input.representativeName || input.representativeName.trim().length < 2) errors.representativeName = 'required';
+  if (!input.representativePhone) errors.representativePhone = 'required';
+  else if (!normalizeBdPhone(input.representativePhone)) errors.representativePhone = 'invalidPhone';
+  if (input.verificationInfo && input.verificationInfo.length > 1000) errors.verificationInfo = 'tooLong';
   if (Object.keys(errors).length) throw validationError(errors);
 }
 
@@ -85,7 +97,7 @@ export async function registerCommunity(actor: Actor, input: CommunityInput, met
     return await db.transaction(async (tx) => {
       await validateCommunityInput(input, tx);
       const slug = await uniqueSlug(tx, input.nameEn || input.name);
-      const { serviceAreaIds, ...fields } = input;
+      const { serviceAreaIds, ...fields } = { ...input, representativePhone: normalizeBdPhone(input.representativePhone ?? '') };
       const [community] = await tx.insert(communities).values({ ...fields, slug, status: 'pending', createdByUserId: actor.userId }).returning();
       await tx.insert(communityServiceAreas).values([...new Set(serviceAreaIds)].map((locationId) => ({ communityId: community.id, locationId })));
       await tx.insert(communityMemberships).values({ communityId: community.id, userId: actor.userId, role: 'leader', status: 'active', reviewedByUserId: actor.userId });
@@ -133,7 +145,7 @@ export async function updateCommunityProfile(actor: Actor, communityId: string, 
     return await db.transaction(async (tx) => {
       await requireCapability(actor, communityId, 'edit_profile', tx);
       await validateCommunityInput(input, tx);
-      const { serviceAreaIds, ...fields } = input;
+      const { serviceAreaIds, ...fields } = { ...input, representativePhone: normalizeBdPhone(input.representativePhone ?? '') };
       await tx.update(communities).set({ ...fields, updatedAt: new Date() }).where(eq(communities.id, communityId));
       await tx.delete(communityServiceAreas).where(eq(communityServiceAreas.communityId, communityId));
       await tx.insert(communityServiceAreas).values([...new Set(serviceAreaIds)].map((locationId) => ({ communityId, locationId })));
@@ -224,6 +236,7 @@ export function publicCommunity(c: Community) {
     divisionId: c.divisionId,
     districtId: c.districtId,
     coordinatorContactPreference: c.coordinatorContactPreference,
+    affiliation: c.affiliation,
     publicPhone: c.showPublicContact ? c.publicPhone : null,
     publicEmail: c.showPublicContact ? c.publicEmail : null,
     facebookUrl: c.facebookUrl,
@@ -447,6 +460,7 @@ export async function findDonorsForCommunity(
   const areaIds = await serviceAreaLocationIds(communityId);
   const conditions: SQL[] = [
     eq(donorConsents.allowCoordinatorContact, true),
+    eq(donorProfiles.registrationStatus, 'approved'),
     eq(donorProfiles.status, 'active'),
     eq(users.status, 'active'),
     inAreaCondition(areaIds),
@@ -494,6 +508,7 @@ export async function findDonorsForCommunity(
         verificationStatus: r.donor.verificationStatus,
         availability: donorAvailability(r.donor, r.accountStatus),
         availabilityConfirmedAt: r.donor.availabilityConfirmedAt,
+        availabilitySource: r.donor.availabilitySource,
         consents: { ...r.consent },
         // Coordinators see verified/self-reported counts so they can judge reliability.
         stats: stats.get(r.donor.id) ?? { verifiedCount: 0, reportedCount: 0, lastDonation: null },
@@ -515,7 +530,7 @@ export async function revealDonorPhoneForCommunity(actor: Actor, communityId: st
     .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
     .innerJoin(users, eq(users.id, donorProfiles.userId))
     .where(and(eq(donorProfiles.publicId, donorPublicId), inAreaCondition(areaIds)));
-  if (!row || !row.consent.allowCoordinatorContact || row.donor.status !== 'active' || row.accountStatus !== 'active') throw notFound();
+  if (!row || !row.consent.allowCoordinatorContact || row.donor.registrationStatus !== 'approved' || row.donor.status !== 'active' || row.accountStatus !== 'active') throw notFound();
   if (row.consent.phoneVisibility === 'private') throw forbidden();
   await audit(db, { actor, action: 'donor.phone_revealed', targetType: 'donor', targetId: row.donor.id, communityId, metadata: { context: 'community_finder' }, ipHash: meta.ipHash });
   return { phone: row.donor.contactPhone, method: row.donor.preferredContactMethod, name: row.donor.fullName };
@@ -564,4 +579,21 @@ export async function communityReport(actor: Actor, communityId: string) {
     )
     .groupBy(bloodRequests.status);
   return { members, byGroup, records, requestsByStatus };
+}
+
+/**
+ * Marks an organisation as part of Holy Mission itself, or as independent. Only platform admins
+ * can do this, with a reason; registering on the platform never changes it.
+ */
+export async function setCommunityAffiliation(actor: Actor, communityId: string, affiliation: 'independent' | 'holy_mission', reason: string, meta: ClientMeta = {}) {
+  if (!can(actor, 'communities.review')) throw forbidden();
+  if (!reason.trim()) throw validationError({ reason: 'required' });
+  return db.transaction(async (tx) => {
+    const [community] = await tx.select().from(communities).where(eq(communities.id, communityId)).for('update');
+    if (!community) throw notFound();
+    if (community.affiliation === affiliation) throw new AppError('invalid_state');
+    if (affiliation === 'holy_mission' && community.status !== 'approved') throw new AppError('invalid_state', 'community_not_approved');
+    await tx.update(communities).set({ affiliation, updatedAt: new Date() }).where(eq(communities.id, communityId));
+    await audit(tx, { actor, action: 'community.affiliation_changed', targetType: 'community', targetId: communityId, communityId, metadata: { from: community.affiliation, to: affiliation, reason }, ipHash: meta.ipHash });
+  });
 }

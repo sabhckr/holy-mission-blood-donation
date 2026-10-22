@@ -2,13 +2,13 @@ import { asc, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { communities, donorProfiles, users } from '../db/schema';
 import { forbidden } from '../errors';
-import { isAdmin, type Actor } from '../policy';
+import { can, type Actor } from '../policy';
 
-/** Read-only helpers for the admin pages. Every function re-checks admin rights. */
+/** Read-only helpers for the staff pages. Every function re-checks the staff permission. */
 
 /** Every donor profile waiting for verification, across all communities. */
 export async function pendingProfileVerificationsAll(actor: Actor) {
-  if (!isAdmin(actor)) throw forbidden();
+  if (!can(actor, 'verifications.review')) throw forbidden();
   return db
     .select({
       donorId: donorProfiles.id,
@@ -32,7 +32,7 @@ export async function pendingProfileVerificationsAll(actor: Actor) {
 
 /** Community id -> slug, for linking reports to community pages. */
 export async function communitySlugsByIds(actor: Actor, ids: string[]) {
-  if (!isAdmin(actor)) throw forbidden();
+  if (!can(actor, 'reports.handle')) throw forbidden();
   const valid = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
   if (valid.length === 0) return new Map<string, string>();
   const rows = await db.select({ id: communities.id, slug: communities.slug }).from(communities).where(inArray(communities.id, valid));
@@ -41,7 +41,7 @@ export async function communitySlugsByIds(actor: Actor, ids: string[]) {
 
 /** Donor public id -> user id, so admins can jump from a donor report to the account page. */
 export async function userIdsByDonorPublicIds(actor: Actor, publicIds: string[]) {
-  if (!isAdmin(actor)) throw forbidden();
+  if (!can(actor, 'reports.handle')) throw forbidden();
   const valid = publicIds.filter((id) => /^[a-z0-9]{6,20}$/.test(id));
   if (valid.length === 0) return new Map<string, string>();
   const rows = await db.select({ publicId: donorProfiles.publicId, userId: donorProfiles.userId }).from(donorProfiles).where(inArray(donorProfiles.publicId, valid));

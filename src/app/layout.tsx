@@ -10,6 +10,7 @@ import { managedCommunities } from '@/server/services/communities';
 import { unreadCount } from '@/server/services/notifications';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { SiteHeader } from '@/components/site/SiteHeader';
+import { operatingAreaSummary } from '@/components/site/operating-area';
 import './globals.css';
 
 const bangla = Noto_Sans_Bengali({ subsets: ['bengali', 'latin'], weight: ['400', '500', '600', '700', '800'], display: 'swap', variable: '--font-bangla' });
@@ -31,7 +32,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { t, locale } = await getI18n();
   const actor = await getActor();
   const currentUrl = (await headers()).get('x-url') ?? '/';
-  const [unread, managed] = actor ? await Promise.all([unreadCount(actor.userId), managedCommunities(actor)]) : [0, []];
+  const [[unread, managed], operatingArea] = await Promise.all([
+    actor ? Promise.all([unreadCount(actor.userId), managedCommunities(actor)]) : Promise.resolve([0, []] as const),
+    operatingAreaSummary(locale, t),
+  ]);
   return (
     <html lang={locale} className={bangla.variable}>
       <body>
@@ -48,7 +52,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <main id="main" tabIndex={-1}>
           {children}
         </main>
-        <SiteFooter t={t} />
+        <SiteFooter t={t} operatingArea={operatingArea.sentence} />
       </body>
     </html>
   );

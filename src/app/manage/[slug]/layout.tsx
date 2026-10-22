@@ -34,9 +34,12 @@ export default async function ManageLayout({ children, params }: { children: Rea
   return (
     <>
       <PageHeader title={name} crumbs={[{ href: `/communities/${ctx.community.slug}`, label: c.manageTitle }]}>
-        <Badge tone={status === 'approved' ? 'success' : status === 'pending' ? 'warning' : 'danger'}>
-          {c.statusLabel}: {t.common.communityStatus[status]}
-        </Badge>
+        <div className="cluster-sm">
+          <Badge tone={status === 'approved' ? 'success' : status === 'pending' ? 'warning' : 'danger'}>
+            {c.statusLabel}: {t.common.communityStatus[status]}
+          </Badge>
+          <Badge tone={ctx.community.affiliation === 'holy_mission' ? 'info' : 'neutral'}>{t.common.affiliation[ctx.community.affiliation]}</Badge>
+        </div>
       </PageHeader>
       <div className="container section layout-sidebar">
         <nav className="side-nav" aria-label={c.manageNav}>
@@ -52,7 +55,8 @@ export default async function ManageLayout({ children, params }: { children: Rea
         </nav>
         <div className="stack">
           {status === 'pending' && <Alert tone="info">{c.managePendingNotice}</Alert>}
-          {(status === 'suspended' || status === 'rejected') && <Alert tone="warning">{c.manageSuspendedNotice}</Alert>}
+          {status === 'suspended' && <Alert tone="warning">{c.manageSuspendedNotice}</Alert>}
+          {status === 'rejected' && <Alert tone="warning">{c.manageRejectedNotice}</Alert>}
           {children}
         </div>
       </div>

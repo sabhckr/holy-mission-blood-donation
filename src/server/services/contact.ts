@@ -7,7 +7,7 @@ import type { ClientMeta } from './accounts';
 import { audit } from './audit';
 import { createNotifications } from './notifications';
 import { getSettings } from './settings';
-import { donorAvailability } from './donors';
+import { donorAvailability, isPubliclyListed } from './donors';
 
 /**
  * Consent-based contact: a signed-in person asks a donor to get in touch. The donor sees the
@@ -25,7 +25,7 @@ export async function sendContactRequest(actor: Actor, donorPublicId: string, me
         .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
         .innerJoin(users, eq(users.id, donorProfiles.userId))
         .where(eq(donorProfiles.publicId, donorPublicId));
-      if (!row || !row.consent.listedInSearch) throw notFound();
+      if (!row || !isPubliclyListed(row)) throw notFound();
       if (row.donor.userId === actor.userId) throw new AppError('invalid_state', 'cannot_contact_self');
       if (!row.consent.allowContactRequests || donorAvailability(row.donor, row.accountStatus) === 'restricted') {
         throw new AppError('forbidden', 'contact_not_allowed');

@@ -36,11 +36,20 @@ const updatedAt = () => timestamp('updated_at', { withTimezone: true }).notNull(
 // Enums
 // ---------------------------------------------------------------------------
 
-export const userRole = pgEnum('user_role', ['user', 'admin']);
+/** 'moderator' = platform staff with a limited permission set (see PLATFORM_PERMISSIONS in policy.ts). */
+export const userRole = pgEnum('user_role', ['user', 'admin', 'moderator']);
 export const accountStatus = pgEnum('account_status', ['active', 'deactivated', 'suspended', 'deleted']);
 export const bloodGroup = pgEnum('blood_group', ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
 export const locationLevel = pgEnum('location_level', ['division', 'district', 'upazila']);
-export const donorProfileStatus = pgEnum('donor_profile_status', ['active', 'paused', 'restricted']);
+/** Listing status: 'paused' = deactivated by the donor, 'restricted' = deactivated by staff,
+ *  'removed' = removed by staff (kept for the record, restorable, never shown). */
+export const donorProfileStatus = pgEnum('donor_profile_status', ['active', 'paused', 'restricted', 'removed']);
+/** Registration review by platform staff; only 'approved' donors can appear publicly. */
+export const registrationStatus = pgEnum('registration_status', ['pending', 'approved', 'rejected']);
+/** Who last set a donor's availability: the donor themself or platform staff (an override). */
+export const availabilitySource = pgEnum('availability_source', ['donor', 'staff']);
+/** Whether an organisation is part of Holy Mission itself; registering never makes it so. */
+export const communityAffiliation = pgEnum('community_affiliation', ['independent', 'holy_mission']);
 export const verificationStatus = pgEnum('verification_status', ['unverified', 'pending', 'verified', 'rejected']);
 /** Who may see a category of donor information. 'public' = anyone, 'signed_in' = any signed-in account,
  *  'coordinators' = leaders/coordinators of approved communities and platform admins, 'private' = only the donor. */
@@ -49,7 +58,8 @@ export const contactMethod = pgEnum('contact_method', ['call', 'sms', 'whatsapp'
 export const donationType = pgEnum('donation_type', ['whole_blood', 'double_red_cells', 'platelets', 'plasma']);
 export const donationSource = pgEnum('donation_source', ['self_reported', 'community', 'admin']);
 export const donationStatus = pgEnum('donation_status', ['unverified', 'pending', 'verified', 'rejected', 'voided']);
-export const availabilityStatus = pgEnum('availability_status', ['available', 'unavailable']);
+/** 'unknown' is only written to the history table, when staff reset availability. */
+export const availabilityStatus = pgEnum('availability_status', ['available', 'unavailable', 'unknown']);
 export const communityStatus = pgEnum('community_status', ['pending', 'approved', 'suspended', 'rejected']);
 export const communityKind = pgEnum('community_kind', [
   'blood_organization',
@@ -167,6 +177,31 @@ export const locations = pgTable(
   ],
 );
 
+/**
+ * Holy Mission's own official operating areas (initially Lakshmipur district only). This is
+ * deliberately separate from where donors and organisations are located: the platform accepts
+ * donors and organisations from all of Bangladesh. Changes are audit-logged.
+ */
+export const operatingAreas = pgTable(
+  'operating_areas',
+  {
+    id: serial('id').primaryKey(),
+    locationId: integer('location_id')
+      .notNull()
+      .references(() => locations.id, { onDelete: 'restrict' }),
+    isActive: boolean('is_active').notNull().default(true),
+    /** Optional public note (e.g. "Volunteers meet at the district hospital on Fridays"). */
+    publicNote: text('public_note'),
+    updatedByUserId: uuid('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex('operating_areas_location_key').on(t.locationId),
+    check('operating_areas_note_len', sql`${t.publicNote} is null or char_length(${t.publicNote}) <= 300`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Donors
 // ---------------------------------------------------------------------------
@@ -197,7 +232,12 @@ export const donorProfiles = pgTable(
     contactPhone: text('contact_phone').notNull(),
     preferredContactMethod: contactMethod('preferred_contact_method').notNull().default('call'),
     status: donorProfileStatus('status').notNull().default('active'),
+    /** Reason given by staff for 'restricted' or 'removed'. */
     restrictedReason: text('restricted_reason'),
+    registrationStatus: registrationStatus('registration_status').notNull().default('pending'),
+    registrationReviewedByUserId: uuid('registration_reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    registrationReviewedAt: timestamp('registration_reviewed_at', { withTimezone: true }),
+    registrationNote: text('registration_note'),
     verificationStatus: verificationStatus('verification_status').notNull().default('unverified'),
     verificationCommunityId: uuid('verification_community_id').references(() => communities.id, { onDelete: 'set null' }),
     verifiedByUserId: uuid('verified_by_user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -206,6 +246,8 @@ export const donorProfiles = pgTable(
     availabilityStatus: availabilityStatus('availability_status'),
     availabilityConfirmedAt: timestamp('availability_confirmed_at', { withTimezone: true }),
     availabilityExpiresAt: timestamp('availability_expires_at', { withTimezone: true }),
+    /** 'staff' marks an administrative override, never shown as the donor's own confirmation. */
+    availabilitySource: availabilitySource('availability_source'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -213,6 +255,7 @@ export const donorProfiles = pgTable(
     uniqueIndex('donor_profiles_user_key').on(t.userId),
     uniqueIndex('donor_profiles_public_id_key').on(t.publicId),
     index('donor_profiles_search_idx').on(t.bloodGroup, t.districtId, t.status),
+    index('donor_profiles_review_idx').on(t.registrationStatus, t.createdAt),
     index('donor_profiles_upazila_idx').on(t.upazilaId),
     index('donor_profiles_division_idx').on(t.divisionId),
     index('donor_profiles_dup_idx').on(t.nameKey, t.dateOfBirth),
@@ -254,6 +297,11 @@ export const availabilityUpdates = pgTable(
     confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     note: text('note'),
+    /** 'donor' = the donor's own statement; 'staff' = override by platform staff (actor + reason recorded). */
+    source: availabilitySource('source').notNull().default('donor'),
+    setByUserId: uuid('set_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    previousStatus: text('previous_status'),
+    reason: text('reason'),
   },
   (t) => [
     index('availability_updates_donor_idx').on(t.donorId, t.confirmedAt),
@@ -351,6 +399,8 @@ export const communities = pgTable(
     foundedYear: smallint('founded_year'),
     status: communityStatus('status').notNull().default('pending'),
     statusReason: text('status_reason'),
+    /** Only platform admins can mark an organisation as part of Holy Mission. */
+    affiliation: communityAffiliation('affiliation').notNull().default('independent'),
     divisionId: integer('division_id')
       .notNull()
       .references(() => locations.id),
@@ -364,6 +414,12 @@ export const communities = pgTable(
     showPublicContact: boolean('show_public_contact').notNull().default(false),
     /** How the public should reach coordinators: through in-app requests, the public phone, or both. */
     coordinatorContactPreference: text('coordinator_contact_preference').notNull().default('in_app'),
+    /** Responsible representative and verification details. Private: platform admins and the
+     *  organisation's own leaders only; never part of the public projection. */
+    representativeName: text('representative_name'),
+    representativeRole: text('representative_role'),
+    representativePhone: text('representative_phone'),
+    verificationInfo: text('verification_info'),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
     reviewedByUserId: uuid('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
@@ -376,6 +432,7 @@ export const communities = pgTable(
     index('communities_status_idx').on(t.status),
     check('communities_contact_pref', sql`${t.coordinatorContactPreference} in ('in_app', 'phone', 'both')`),
     check('communities_description_len', sql`${t.description} is null or char_length(${t.description}) <= 1000`),
+    check('communities_verification_info_len', sql`${t.verificationInfo} is null or char_length(${t.verificationInfo}) <= 1000`),
   ],
 );
 

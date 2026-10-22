@@ -3,7 +3,7 @@ import { db } from '../db/client';
 import { reports, users } from '../db/schema';
 import { PAGE_SIZE, type ReportReason, type ReportTarget } from '../domain/constants';
 import { AppError, forbidden, notFound } from '../errors';
-import { isAdmin, type Actor } from '../policy';
+import { can, type Actor } from '../policy';
 import type { ClientMeta } from './accounts';
 import { audit } from './audit';
 
@@ -19,7 +19,7 @@ export async function createReport(actor: Actor | null, input: { targetType: Rep
 }
 
 export async function listReports(actor: Actor, filters: { status?: 'open' | 'reviewing' | 'resolved' | 'dismissed' | null; page?: number }) {
-  if (!isAdmin(actor)) throw forbidden();
+  if (!can(actor, 'reports.handle')) throw forbidden();
   const conds: SQL[] = [];
   if (filters.status) conds.push(eq(reports.status, filters.status));
   const where = conds.length ? and(...conds) : undefined;
@@ -38,7 +38,7 @@ export async function listReports(actor: Actor, filters: { status?: 'open' | 're
 }
 
 export async function handleReport(actor: Actor, reportId: string, status: 'reviewing' | 'resolved' | 'dismissed', note: string | null, meta: ClientMeta = {}) {
-  if (!isAdmin(actor)) throw forbidden();
+  if (!can(actor, 'reports.handle')) throw forbidden();
   return db.transaction(async (tx) => {
     const [report] = await tx.select().from(reports).where(eq(reports.id, reportId)).for('update');
     if (!report) throw notFound();

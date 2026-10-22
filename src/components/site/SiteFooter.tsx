@@ -1,17 +1,25 @@
 import Link from 'next/link';
+import { MapPin } from 'lucide-react';
 import type { Messages } from '@/i18n/messages';
 
-export function SiteFooter({ t }: { t: Messages }) {
+export function SiteFooter({ t, operatingArea }: { t: Messages; operatingArea: string }) {
   return (
     <footer className="site-footer">
       <div className="container">
         <div className="footer-grid">
-          <div>
+          <div className="stack-sm">
             <h2>{t.common.brand}</h2>
-            <p lang="bn" style={{ fontWeight: 700 }}>
+            <p lang="bn" className="footer-slogan">
               {t.common.slogan}
             </p>
             <p>{t.common.footer.about}</p>
+            <div className="footer-area">
+              <h3 className="cluster-sm">
+                <MapPin size={16} aria-hidden="true" />
+                {t.common.operatingArea.title}
+              </h3>
+              <p>{operatingArea}</p>
+            </div>
           </div>
           <div>
             <h2>{t.common.footer.links}</h2>
@@ -20,13 +28,16 @@ export function SiteFooter({ t }: { t: Messages }) {
                 <Link href="/donors">{t.common.nav.findDonors}</Link>
               </li>
               <li>
+                <Link href="/register">{t.common.nav.becomeDonor}</Link>
+              </li>
+              <li>
                 <Link href="/requests/new">{t.common.nav.newRequest}</Link>
               </li>
               <li>
                 <Link href="/communities">{t.common.nav.communities}</Link>
               </li>
               <li>
-                <Link href="/register">{t.common.nav.becomeDonor}</Link>
+                <Link href="/communities/new">{t.common.nav.registerCommunity}</Link>
               </li>
             </ul>
           </div>

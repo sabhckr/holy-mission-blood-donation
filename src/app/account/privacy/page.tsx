@@ -77,7 +77,7 @@ export default async function PrivacySettingsPage() {
             </ActionForm>
           </section>
 
-          {overview.donor.status !== 'restricted' && (
+          {(overview.donor.status === 'active' || overview.donor.status === 'paused') && (
             <section className="card stack" aria-labelledby="pause-title">
               <h2 id="pause-title" style={{ fontSize: '1.15rem' }}>
                 {p.pauseTitle}

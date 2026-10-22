@@ -6,13 +6,64 @@ import type { Visibility } from './domain/constants';
 
 export interface Actor {
   userId: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'moderator';
   status: 'active' | 'deactivated' | 'suspended' | 'deleted';
   displayName: string;
   donorId: string | null;
 }
 
 export const isAdmin = (actor: Actor | null | undefined): boolean => !!actor && actor.role === 'admin' && actor.status === 'active';
+
+// ---------------------------------------------------------------------------
+// Platform staff permissions (least privilege)
+// ---------------------------------------------------------------------------
+
+export const PLATFORM_PERMISSIONS = [
+  'staff.panel',
+  'overview.view',
+  'donors.review',
+  'donors.manage',
+  'donors.availability',
+  'verifications.review',
+  'reports.handle',
+  'duplicates.review',
+  'requests.view',
+  'communities.review',
+  'operating_areas.manage',
+  'locations.manage',
+  'settings.manage',
+  'users.manage',
+  'audit.view',
+  'access.review',
+  'data.export',
+  'deletions.process',
+] as const;
+export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[number];
+
+/**
+ * Moderators handle day-to-day donor data work. Organisation approval, operating areas,
+ * settings, roles, audit log, exports and deletions stay with administrators.
+ */
+export const MODERATOR_PERMISSIONS: readonly PlatformPermission[] = [
+  'staff.panel',
+  'overview.view',
+  'donors.review',
+  'donors.manage',
+  'donors.availability',
+  'verifications.review',
+  'reports.handle',
+  'duplicates.review',
+  'requests.view',
+];
+
+export function can(actor: Actor | null | undefined, permission: PlatformPermission): boolean {
+  if (!actor || actor.status !== 'active') return false;
+  if (actor.role === 'admin') return true;
+  if (actor.role === 'moderator') return MODERATOR_PERMISSIONS.includes(permission);
+  return false;
+}
+
+export const isStaff = (actor: Actor | null | undefined): boolean => can(actor, 'staff.panel');
 
 // ---------------------------------------------------------------------------
 // Donor information visibility
@@ -32,12 +83,12 @@ export function canSee(visibility: Visibility, viewer: ViewerLevel): boolean {
  * Viewer level on public pages. Coordinators are treated as ordinary signed-in users here;
  * the coordinator level only applies inside a community's donor finder, where the donor's
  * coordinator-contact consent and the community's service area are also checked.
- * Platform administrators see coordinator-level information.
+ * Platform staff who manage donor records see coordinator-level information.
  */
 export function publicViewerLevel(actor: Actor | null, donorUserId: string): ViewerLevel {
   if (!actor || actor.status !== 'active') return 'anonymous';
   if (actor.userId === donorUserId) return 'owner';
-  if (isAdmin(actor)) return 'coordinator';
+  if (can(actor, 'donors.manage')) return 'coordinator';
   return 'signed_in';
 }
 
@@ -101,7 +152,7 @@ export interface VerificationFacts {
 export function canVerifyRecord(actor: Actor | null, facts: VerificationFacts): boolean {
   if (!actor || actor.status !== 'active') return false;
   if (actor.userId === facts.donorUserId) return false; // nobody verifies their own records
-  if (isAdmin(actor)) return true;
+  if (can(actor, 'verifications.review')) return true;
   return facts.reviewerCapabilities.has('verify_records') && facts.donorIsActiveMember;
 }
 

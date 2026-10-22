@@ -10,6 +10,13 @@ blood group and area, post requests, and get help from local blood donation orga
 This is a community coordination tool. It is **not** a hospital or blood bank, and it never
 decides whether someone is medically eligible to donate.
 
+**Where Holy Mission operates vs. who can join.** Holy Mission's own official operating area is
+currently **Lakshmipur district** (managed by admins in Admin → Operating areas). The platform
+itself is nationwide: donors and blood donation organisations from every district can register.
+Registering never makes an organisation a Holy Mission branch. See [docs/STATUSES.md](docs/STATUSES.md)
+for how operating area, donor area, registration review, listing, availability, verification and
+medical eligibility are kept apart.
+
 ## What is included
 
 - **Public site** – home with the slogan, quick donor search, how it works, emergency advice,
@@ -36,6 +43,10 @@ decides whether someone is medically eligible to donate.
 - **Blood requests** – blood group, units, location, hospital, time, urgency, contact
   preference, private management link for anonymous requesters, donor offers (never treated as
   agreement until confirmed), status history, expiry, duplicate protection.
+- **Registration review** – new donor registrations wait for staff approval before they appear
+  anywhere public; rejected donors see the reason and can correct and resubmit.
+- **Staff roles** – admins and moderators (donor work only), each page and action guarded by a
+  named permission; every staff change records who, when, the previous value and the reason.
 - **Administration** – overview figures, users (suspend, roles with re-authentication, sessions,
   reset links, donor restriction), organisation approval/suspension, verification queues,
   request oversight, abuse/wrong-information reports, duplicate review, locations, searchable
@@ -45,7 +56,8 @@ decides whether someone is medically eligible to donate.
   `বাংলা | English` switch remembered across visits.
 
 See `docs/` for the [architecture](docs/ARCHITECTURE.md), [permission matrix](docs/PERMISSIONS.md),
-[donation intervals and sources](docs/ELIGIBILITY.md) and [security & privacy](docs/SECURITY-PRIVACY.md).
+[donation intervals and sources](docs/ELIGIBILITY.md), [security & privacy](docs/SECURITY-PRIVACY.md),
+[separate statuses](docs/STATUSES.md), [deploying](docs/DEPLOY-VERCEL.md) and [operations & backups](docs/OPERATIONS.md).
 
 ## Run it locally
 

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Mail, Phone, Siren } from 'lucide-react';
+import { BadgeCheck, Mail, Phone, Siren } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
 import { db } from '@/server/db/client';
@@ -58,6 +58,25 @@ export default async function CommunityPage({ params }: { params: Promise<{ slug
             <p>{statusNotice}</p>
           </Alert>
         )}
+        <section className="card card-tight stack-sm" aria-label={c.affiliationLabel}>
+          <div className="cluster-sm">
+            {community.status === 'approved' && (
+              <Badge tone="success">
+                <BadgeCheck size={14} aria-hidden="true" />
+                {t.common.communityStatus.approved}
+              </Badge>
+            )}
+            <Badge tone={community.affiliation === 'holy_mission' ? 'info' : 'neutral'}>{t.common.affiliation[community.affiliation]}</Badge>
+          </div>
+          {community.status === 'approved' && (
+            <p className="small" style={{ margin: 0 }}>
+              {c.approvedNote}
+            </p>
+          )}
+          <p className="small" style={{ margin: 0 }}>
+            {community.affiliation === 'holy_mission' ? t.common.affiliation.holyMissionNote : t.common.affiliation.independentNote}
+          </p>
+        </section>
         <div className="grid grid-2">
           <section className="card stack" aria-labelledby="about">
             <h2 id="about">{c.about}</h2>

@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { and, eq } from 'drizzle-orm';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
+import { db } from '@/server/db/client';
+import { donorProfiles } from '@/server/db/schema';
 import { REPORT_REASONS } from '@/server/domain/constants';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
-import { donorBloodGroup } from '@/server/services/request-queries';
 import { getRequestForViewer } from '@/server/services/requests';
 import { ReportForm } from '@/components/ReportForm';
 import { ManagePanel } from '@/components/request/ManagePanel';
@@ -30,7 +32,18 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const place = labelFrom(index, locale, r.upazilaId, r.districtId, r.divisionId);
   const open = r.status === 'open' || r.status === 'in_progress';
   const signedIn = !!actor && actor.status === 'active';
-  const myGroup = signedIn && actor.donorId && !view.access.isRequester ? await donorBloodGroup(actor.donorId) : null;
+  const me =
+    signedIn && actor.donorId && !view.access.isRequester
+      ? ((
+          await db
+            .select({ bloodGroup: donorProfiles.bloodGroup, registrationStatus: donorProfiles.registrationStatus, status: donorProfiles.status })
+            .from(donorProfiles)
+            .where(and(eq(donorProfiles.id, actor.donorId), eq(donorProfiles.userId, actor.userId)))
+        )[0] ?? null)
+      : null;
+  const myGroup = me?.bloodGroup ?? null;
+  // Only approved donors with an active listing can offer to help (the service enforces this too).
+  const offerBlocked = me ? (me.registrationStatus !== 'approved' ? 'approval' : me.status !== 'active' ? 'listing' : null) : null;
   const myResponse = view.myResponse && view.myResponse.status !== 'withdrawn' ? view.myResponse : null;
 
   return (
@@ -62,6 +75,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   <p>{t.request.needDonorProfile}</p>
                   <Link className="btn btn-primary" href="/account/profile">
                     {t.request.createProfile}
+                  </Link>
+                </>
+              ) : offerBlocked && !myResponse ? (
+                <>
+                  <p>{offerBlocked === 'approval' ? t.request.needApproval : t.request.needActiveListing}</p>
+                  <Link className="btn" href="/account">
+                    {t.common.nav.account}
                   </Link>
                 </>
               ) : myResponse ? (

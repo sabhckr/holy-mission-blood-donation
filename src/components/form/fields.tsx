@@ -2,6 +2,7 @@
 
 import { useId, type ReactNode } from 'react';
 import { useFormContext } from './ActionForm';
+import type { RequiredMessageKey } from './client-messages';
 
 interface BaseProps {
   name: string;
@@ -11,6 +12,8 @@ interface BaseProps {
   requiredLabel?: string;
   optionalLabel?: string;
   defaultValue?: string | null;
+  /** Which message the browser-side check shows when this required field is empty. */
+  requiredKey?: RequiredMessageKey;
 }
 
 function useField(name: string, defaultValue?: string | null) {
@@ -78,6 +81,7 @@ export function TextField({
         defaultValue={type === 'password' ? undefined : value}
         required={props.required}
         aria-required={props.required}
+        data-required-key={props.requiredKey}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(`${id}-hint`, `${id}-error`, props.hint, error)}
         autoComplete={autoComplete}
@@ -117,6 +121,7 @@ export function TextArea({ maxLength, rows = 3, ...props }: BaseProps & { maxLen
         maxLength={maxLength}
         required={props.required}
         aria-required={props.required}
+        data-required-key={props.requiredKey}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(`${id}-hint`, `${id}-error`, props.hint, error)}
       />
@@ -153,6 +158,7 @@ export function SelectField({ options, placeholder, ...props }: BaseProps & { op
         defaultValue={value}
         required={props.required}
         aria-required={props.required}
+        data-required-key={props.requiredKey}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(`${id}-hint`, `${id}-error`, props.hint, error)}
       >
@@ -207,14 +213,39 @@ export function CheckboxField({ name, label, hint, defaultChecked, required, val
   );
 }
 
-export function RadioGroup({ name, legend, options, defaultValue, hint, tiles }: { name: string; legend: string; options: Option[]; defaultValue?: string | null; hint?: ReactNode; tiles?: boolean }) {
+export function RadioGroup({
+  name,
+  legend,
+  options,
+  defaultValue,
+  hint,
+  tiles,
+  required,
+  requiredKey,
+}: {
+  name: string;
+  legend: string;
+  options: Option[];
+  defaultValue?: string | null;
+  hint?: ReactNode;
+  tiles?: boolean;
+  required?: boolean;
+  requiredKey?: RequiredMessageKey;
+}) {
   const id = useId();
   const { state } = useFormContext();
   const error = state.fieldErrors?.[name];
   const value = state.values && name in state.values ? state.values[name] : (defaultValue ?? '');
   return (
-    <fieldset className="choice-group" aria-describedby={describedBy(`${id}-hint`, `${id}-error`, hint, error)} aria-invalid={error ? true : undefined}>
-      <legend>{legend}</legend>
+    <fieldset className="choice-group" aria-describedby={describedBy(`${id}-hint`, `${id}-error`, hint, error)} aria-invalid={error ? true : undefined} data-required-key={requiredKey}>
+      <legend>
+        {legend}
+        {required && (
+          <span className="req" aria-hidden="true">
+            *
+          </span>
+        )}
+      </legend>
       {hint && (
         <p className="hint" id={`${id}-hint`}>
           {hint}
@@ -224,12 +255,12 @@ export function RadioGroup({ name, legend, options, defaultValue, hint, tiles }:
         {options.map((o) =>
           tiles ? (
             <label className="choice-tile" key={o.value}>
-              <input type="radio" name={name} value={o.value} defaultChecked={value === o.value} />
+              <input type="radio" name={name} value={o.value} defaultChecked={value === o.value} required={required} />
               <span>{o.label}</span>
             </label>
           ) : (
             <label className="check" key={o.value}>
-              <input type="radio" name={name} value={o.value} defaultChecked={value === o.value} />
+              <input type="radio" name={name} value={o.value} defaultChecked={value === o.value} required={required} />
               <span>{o.label}</span>
             </label>
           ),

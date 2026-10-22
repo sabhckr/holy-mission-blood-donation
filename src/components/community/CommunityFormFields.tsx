@@ -19,6 +19,10 @@ export interface CommunityFormDefaults {
   facebookUrl?: string | null;
   showPublicContact?: boolean;
   coordinatorContactPreference?: string;
+  representativeName?: string | null;
+  representativeRole?: string | null;
+  representativePhone?: string | null;
+  verificationInfo?: string | null;
 }
 
 function areaLabels(t: Messages): CommunityAreaLabels {
@@ -105,6 +109,25 @@ export function CommunityFormFields({ t, locations, defaults }: { t: Messages; l
             { value: 'both', label: c.prefBoth },
           ]}
         />
+      </fieldset>
+
+      <fieldset className="form-section">
+        <legend>{c.sectionRepresentative}</legend>
+        <p className="hint">{c.representativeIntro}</p>
+        <TextField name="representativeName" label={c.representativeName} required maxLength={120} autoComplete="name" defaultValue={defaults?.representativeName} />
+        <TextField name="representativeRole" label={c.representativeRole} hint={c.representativeRoleHint} optionalLabel={opt} maxLength={80} defaultValue={defaults?.representativeRole} />
+        <TextField
+          name="representativePhone"
+          type="tel"
+          inputMode="tel"
+          label={c.representativePhone}
+          hint={c.representativePhoneHint}
+          required
+          maxLength={20}
+          autoComplete="tel"
+          defaultValue={defaults?.representativePhone ? formatBdPhone(defaults.representativePhone) : ''}
+        />
+        <TextArea name="verificationInfo" label={c.verificationInfo} hint={c.verificationInfoHint} optionalLabel={opt} maxLength={1000} rows={3} defaultValue={defaults?.verificationInfo} />
       </fieldset>
     </>
   );

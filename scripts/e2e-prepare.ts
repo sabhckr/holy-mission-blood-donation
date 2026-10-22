@@ -19,6 +19,8 @@ const { runMigrations } = await import('./migrate');
 const { seedLocations } = await import('./seed');
 await runMigrations();
 await seedLocations();
+const { seedInitialOperatingArea } = await import('../src/server/services/operating-areas');
+await seedInitialOperatingArea();
 const { db } = await import('../src/server/db/client');
 const { users } = await import('../src/server/db/schema');
 const { createAccount } = await import('../src/server/services/accounts');

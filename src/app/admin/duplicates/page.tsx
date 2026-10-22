@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { duplicateCandidates } from '@/server/services/admin';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { AdminAction } from '@/components/admin/AdminAction';
@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminDuplicatesPage() {
-  const actor = await requireAdmin('/admin/duplicates');
+  const actor = await requirePermission('/admin/duplicates', 'duplicates.review');
   const { t, instantDate, locale } = await getI18n();
   const [rows, index] = await Promise.all([duplicateCandidates(actor), getLocationIndex()]);
   const d = t.admin.duplicates;
@@ -38,16 +38,16 @@ export default async function AdminDuplicatesPage() {
               <div className="grid grid-2">
                 {(
                   [
-                    [d.profileA, row.aUserId, row.aName, row.aGroup, row.aDistrict, row.aCreated],
-                    [d.profileB, row.bUserId, row.bName, row.bGroup, row.bDistrict, row.bCreated],
+                    [d.profileA, row.aId, row.aName, row.aGroup, row.aDistrict, row.aCreated],
+                    [d.profileB, row.bId, row.bName, row.bGroup, row.bDistrict, row.bCreated],
                   ] as const
-                ).map(([label, userId, name, group, district, created]) => (
+                ).map(([label, donorId, name, group, district, created]) => (
                   <div key={label} className="stack-sm">
                     <p className="small muted" style={{ margin: 0 }}>
                       {label}
                     </p>
                     <p style={{ margin: 0 }}>
-                      <Link href={`/admin/users/${userId}`}>{name}</Link> · <strong>{group}</strong>
+                      <Link href={`/admin/donors/${donorId}`}>{name}</Link> · <strong>{group}</strong>
                     </p>
                     <p className="small" style={{ margin: 0 }}>
                       {labelFrom(index, locale, district)} · {d.registered}: {instantDate(created)}

@@ -69,7 +69,7 @@ h1,
 h2,
 h3,
 h4 {
-  line-height: 1.3;
+  line-height: 1.4;
   margin: 0 0 var(--space-3);
   color: var(--ink);
 }
@@ -82,6 +82,9 @@ h2 {
 }
 h3 {
   font-size: 1.15rem;
+}
+h4 {
+  font-size: 1.05rem;
 }
 
 p {
@@ -257,8 +260,9 @@ hr {
   color: var(--ink);
   text-decoration: none;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
   margin-right: auto;
+  min-width: 0;
 }
 
 .brand:hover {
@@ -272,6 +276,8 @@ hr {
 
 .brand-text {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-text small {
@@ -388,6 +394,22 @@ hr {
   display: flex;
   padding: var(--space-3);
   min-height: 44px;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* Narrow phones (≤ 400px): keep brand, language switch and menu on one row. */
+@media (max-width: 400px) {
+  .header-row {
+    gap: var(--space-2);
+  }
+  .lang-switch a,
+  .lang-switch span {
+    padding: 0.3rem 0.5rem;
+  }
+  .nav-mobile > summary {
+    padding: var(--space-2);
+  }
 }
 
 .nav-mobile-panel hr {
@@ -432,7 +454,8 @@ hr {
   border: 1px solid transparent;
   font: inherit;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.4;
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
   background: var(--surface);
@@ -502,6 +525,10 @@ hr {
   font-size: 0.92rem;
 }
 
+.btn > svg {
+  flex: none;
+}
+
 .btn-lg {
   min-height: 52px;
   padding: 0.75rem 1.4rem;
@@ -519,6 +546,13 @@ hr {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: var(--space-5);
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: var(--space-4);
+  }
 }
 
 .card-tight {
@@ -628,7 +662,7 @@ hr {
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .textarea {
@@ -676,6 +710,11 @@ hr {
   font-weight: 600;
   padding: 0;
   margin-bottom: var(--space-2);
+}
+
+.choice-group legend .req {
+  color: var(--brand);
+  margin-left: 2px;
 }
 
 .choice-grid {
@@ -778,7 +817,12 @@ hr {
   font-weight: 600;
   line-height: 1.5;
   border: 1px solid transparent;
-  white-space: nowrap;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.badge > svg {
+  flex: none;
 }
 
 .badge-neutral {
@@ -900,7 +944,7 @@ hr {
 .slogan {
   font-size: clamp(1.7rem, 6vw, 2.8rem);
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.45;
   color: var(--brand-strong);
   margin: 0 0 var(--space-3);
 }
@@ -988,6 +1032,21 @@ hr {
 .dl dd {
   margin: 0;
   font-weight: 500;
+  min-width: 0;
+}
+
+@media (max-width: 479px) {
+  .dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .dl dt {
+    font-size: 0.9rem;
+    margin-top: var(--space-3);
+  }
+  .dl dt:first-child {
+    margin-top: 0;
+  }
 }
 
 .table-wrap {
@@ -1031,7 +1090,7 @@ tr:last-child td {
 .stat-value {
   font-size: 1.8rem;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .stat-label {
@@ -1145,6 +1204,26 @@ details.disclosure[open] > summary {
   }
 }
 
+.site-footer h3 {
+  color: #fff;
+  font-size: 0.95rem;
+  margin-bottom: var(--space-1);
+}
+
+.footer-slogan {
+  font-weight: 700;
+  color: #fff;
+}
+
+.footer-area {
+  border-left: 3px solid var(--brand);
+  padding-left: var(--space-3);
+}
+
+.footer-area p {
+  margin: 0;
+}
+
 .footer-note {
   border-top: 1px solid #3a332e;
   margin-top: var(--space-5);
@@ -1167,4 +1246,143 @@ details.disclosure[open] > summary {
   .emergency-strip {
     display: none;
   }
+}
+
+/* ---------- Home: hero actions, operating area ---------- */
+
+.hero-copy > * {
+  margin-top: 0;
+}
+
+.hero-title {
+  font-size: clamp(1.25rem, 3.6vw, 1.6rem);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.hero-lead {
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+
+.hero-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.hero-search {
+  box-shadow: var(--shadow);
+}
+
+.section-band {
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.lead-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.operating-area h2 {
+  margin-bottom: 0;
+}
+
+.operating-area p:last-child {
+  margin-bottom: 0;
+}
+
+.who-list > li h4 {
+  margin: 0;
+}
+
+.who-list > li p {
+  margin: 0;
+}
+
+.who-list > li h4 svg {
+  color: var(--brand);
+  flex: none;
+}
+
+/* ---------- Donor cards and availability ---------- */
+
+.donor-card-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.donor-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.donor-card-place {
+  margin: 0;
+}
+
+.availability-info {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.availability-info p {
+  margin: 0;
+}
+
+.availability-meta span + span::before {
+  content: ' · ';
+}
+
+.consent-note {
+  background: var(--info-soft);
+  border: 1px solid #bcd0ec;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  color: #173c69;
+}
+
+.consent-note h3 {
+  font-size: 1rem;
+  margin-bottom: var(--space-1);
+}
+
+.consent-note p {
+  margin: 0;
+}
+
+/* ---------- Registration privacy summary ---------- */
+
+.privacy-summary h2 {
+  font-size: 1.15rem;
+}
+
+.privacy-summary-group h3 {
+  font-size: 1rem;
+  margin-bottom: var(--space-1);
+}
+
+.privacy-summary-group ul {
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
+.privacy-summary-group li + li {
+  margin-top: var(--space-1);
+}
+
+.privacy-summary-public h3 svg {
+  color: var(--success);
+}
+
+.privacy-summary-choice h3 svg {
+  color: var(--info);
+}
+
+.privacy-summary-private h3 svg {
+  color: var(--brand);
 }

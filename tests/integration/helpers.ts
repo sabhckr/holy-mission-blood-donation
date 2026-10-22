@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/server/db/client';
-import { locations, users } from '@/server/db/schema';
+import { donorProfiles, locations, users } from '@/server/db/schema';
 import type { Actor } from '@/server/policy';
 import { registerAccount, toActor } from '@/server/services/accounts';
 import { approveForTests } from './approve';
@@ -9,9 +9,11 @@ import { registerDonor, type ConsentInput, type DonorProfileInput } from '@/serv
 
 export const PASSWORD = 'Rokto2026test';
 
-/** Empties every table except the seeded locations. */
+/** Empties every table except the seeded locations, then restores the initial operating area. */
 export async function resetDb() {
-  await db.execute(sql`truncate table users, communities, settings, rate_limits, audit_logs, reports restart identity cascade`);
+  await db.execute(sql`truncate table users, communities, settings, rate_limits, audit_logs, reports, operating_areas restart identity cascade`);
+  const { seedInitialOperatingArea } = await import('@/server/services/operating-areas');
+  await seedInitialOperatingArea();
 }
 
 let phoneCounter = 0;
@@ -44,7 +46,16 @@ export const OPEN_CONSENTS: ConsentInput = {
 };
 
 export async function makeDonor(
-  overrides: { profile?: Partial<DonorProfileInput>; consents?: Partial<ConsentInput>; availableNow?: boolean; district?: string; upazila?: string; lastDonation?: { date: string; type: 'whole_blood' | 'platelets' | 'plasma' | 'double_red_cells' } | null } = {},
+  overrides: {
+    profile?: Partial<DonorProfileInput>;
+    consents?: Partial<ConsentInput>;
+    availableNow?: boolean;
+    district?: string;
+    upazila?: string;
+    lastDonation?: { date: string; type: 'whole_blood' | 'platelets' | 'plasma' | 'double_red_cells' } | null;
+    /** Leave the registration pending review (default: approved, as most tests need listed donors). */
+    pending?: boolean;
+  } = {},
 ) {
   const phone = nextPhone();
   const area = await place(overrides.district ?? 'Lakshmipur', overrides.upazila ?? 'Raipur');
@@ -64,6 +75,7 @@ export async function makeDonor(
     availableNow: overrides.availableNow ?? true,
     lastDonation: overrides.lastDonation ?? null,
   });
+  if (!overrides.pending) await db.update(donorProfiles).set({ registrationStatus: 'approved' }).where(eq(donorProfiles.id, donor.id));
   const actor: Actor = toActor(user, donor.id);
   return { user, donor, actor, phone };
 }
@@ -71,6 +83,12 @@ export async function makeDonor(
 export async function makeUser(name = 'Plain User') {
   const user = await registerAccount({ phone: nextPhone(), password: PASSWORD, displayName: name });
   return { user, actor: toActor(user, null) };
+}
+
+export async function makeModerator() {
+  const { user } = await makeUser('Moderator Person');
+  await db.update(users).set({ role: 'moderator' }).where(eq(users.id, user.id));
+  return { user, actor: { ...toActor(user, null), role: 'moderator' as const } };
 }
 
 export async function makeAdmin() {
@@ -99,6 +117,10 @@ export async function makeCommunity(leader: Actor, admin: Actor, opts: { name?: 
     facebookUrl: null,
     showPublicContact: false,
     coordinatorContactPreference: 'in_app',
+    representativeName: 'Abdul Karim',
+    representativeRole: 'President',
+    representativePhone: nextPhone(),
+    verificationInfo: 'Registered with the upazila social services office',
   };
   const community = await registerCommunity(leader, input);
   if (opts.approve !== false) await approveForTests(admin, community.id);

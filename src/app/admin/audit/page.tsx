@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { isIsoDate } from '@/server/domain/dates';
 import { searchAuditLog } from '@/server/services/admin';
 import { EmptyState, Pagination } from '@/components/ui';
@@ -30,7 +30,7 @@ function compactMetadata(metadata: Record<string, unknown>): string {
 }
 
 export default async function AdminAuditPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const actor = await requireAdmin('/admin/audit');
+  const actor = await requirePermission('/admin/audit', 'audit.view');
   const { t, n, dateTime } = await getI18n();
   const sp = await searchParams;
   const f = schema.parse(Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));

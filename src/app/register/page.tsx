@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Eye, EyeOff, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
@@ -12,7 +13,8 @@ import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
 import { CheckboxField, SelectField, TextField } from '@/components/form/fields';
 import { ConsentFields, ProfileFields } from '@/components/DonorFormParts';
 import { consentLabels, locationLabels } from '@/components/consent-labels';
-import { Disclaimer, PageHeader } from '@/components/ui';
+import { clientValidationMessages } from '@/components/form/client-messages';
+import { Alert, Disclaimer, PageHeader } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -30,7 +32,10 @@ export default async function RegisterDonorPage() {
     <>
       <PageHeader title={t.auth.registerTitle} intro={t.auth.registerIntro} />
       <div className="container container-narrow section stack">
-        <ActionForm action={registerDonorAction} aria-label={t.auth.registerTitle}>
+        <Alert tone="info">
+          <p>{t.auth.reviewNotice}</p>
+        </Alert>
+        <ActionForm action={registerDonorAction} aria-label={t.auth.registerTitle} clientMessages={clientValidationMessages(t)}>
           <fieldset className="form-section">
             <legend>{t.auth.sectionAccount}</legend>
             <TextField name="fullName" label={t.auth.fullName} autoComplete="name" required maxLength={80} />
@@ -98,6 +103,33 @@ export default async function RegisterDonorPage() {
               }}
             />
           </fieldset>
+
+          <section className="card card-tight privacy-summary stack-sm" aria-labelledby="privacy-summary">
+            <h2 id="privacy-summary" className="cluster-sm">
+              <ShieldCheck size={20} aria-hidden="true" />
+              {t.auth.summaryTitle}
+            </h2>
+            {(
+              [
+                ['public', Eye, t.auth.summaryPublicTitle, t.auth.summaryPublicItems],
+                ['choice', SlidersHorizontal, t.auth.summaryChoiceTitle, t.auth.summaryChoiceItems],
+                ['private', EyeOff, t.auth.summaryPrivateTitle, t.auth.summaryPrivateItems],
+              ] as const
+            ).map(([key, Icon, title, items]) => (
+              <div key={key} className={`privacy-summary-group privacy-summary-${key}`}>
+                <h3 className="cluster-sm">
+                  <Icon size={18} aria-hidden="true" />
+                  {title}
+                </h3>
+                <ul>
+                  {items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            <p className="small muted">{t.auth.reviewNotice}</p>
+          </section>
 
           <fieldset className="form-section">
             <legend>{t.auth.sectionConsent}</legend>

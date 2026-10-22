@@ -3,6 +3,7 @@
 import { MessageCircle, Phone } from 'lucide-react';
 import { ActionForm, SubmitButton, useFormContext } from './form/ActionForm';
 import { TextArea } from './form/fields';
+import type { ClientValidationMessages } from './form/client-messages';
 import { contactRequestAction, revealPhoneAction } from '@/app/_actions/shared';
 
 function RevealedNumber({ labels }: { labels: { number: string; call: string; sms: string; whatsapp: string } }) {
@@ -49,13 +50,15 @@ export function ContactRequestForm({
   publicId,
   requestPublicId,
   labels,
+  clientMessages,
 }: {
   publicId: string;
   requestPublicId?: string;
   labels: { message: string; hint: string; send: string; sending: string; explain: string };
+  clientMessages?: ClientValidationMessages;
 }) {
   return (
-    <ActionForm action={contactRequestAction}>
+    <ActionForm action={contactRequestAction} clientMessages={clientMessages}>
       <p className="hint">{labels.explain}</p>
       <input type="hidden" name="publicId" value={publicId} />
       {requestPublicId && <input type="hidden" name="requestPublicId" value={requestPublicId} />}

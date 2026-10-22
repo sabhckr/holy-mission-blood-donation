@@ -53,6 +53,10 @@ export const communitySchema = z.object({
   facebookUrl: f.optionalUrl,
   showPublicContact: f.checkbox,
   coordinatorContactPreference: z.enum(['in_app', 'phone', 'both'], { error: 'required' }),
+  representativeName: f.requiredText(120, 2),
+  representativeRole: f.optionalText(80),
+  representativePhone: f.phone,
+  verificationInfo: f.optionalText(1000),
 });
 
 /** Parses the shared community form (registration and settings). Array element errors are reported on the field itself. */

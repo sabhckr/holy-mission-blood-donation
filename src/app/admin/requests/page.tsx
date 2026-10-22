@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { BLOOD_GROUPS, REQUEST_STATUSES } from '@/server/domain/constants';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { adminListRequests } from '@/server/services/requests';
@@ -21,7 +21,7 @@ const schema = z.object({
 });
 
 export default async function AdminRequestsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const actor = await requireAdmin('/admin/requests');
+  const actor = await requirePermission('/admin/requests', 'requests.view');
   const { t, n, dateTime, instantDate, locale } = await getI18n();
   const sp = await searchParams;
   const f = schema.parse(Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));

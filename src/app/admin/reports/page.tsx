@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { communitySlugsByIds } from '@/server/services/admin-queries';
+import { can } from '@/server/policy';
 import { listReports } from '@/server/services/reports';
 import { AdminAction } from '@/components/admin/AdminAction';
 import { Badge, EmptyState, Pagination } from '@/components/ui';
@@ -17,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const STATUSES = ['open', 'reviewing', 'resolved', 'dismissed'] as const;
 
 export default async function AdminReportsPage({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
-  const actor = await requireAdmin('/admin/reports');
+  const actor = await requirePermission('/admin/reports', 'reports.handle');
   const { t, n, dateTime } = await getI18n();
   const sp = await searchParams;
   const parsed = z.enum(STATUSES).safeParse(sp.status);
@@ -28,10 +29,11 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
   const r = t.admin.reports;
   const pending = t.common.actions.submitting;
   const noteField = { name: 'note', label: r.resolution, hint: t.admin.reasonHint };
-  const targetHref = (type: string, id: string): string | null => {
+  /** null = the item is gone; undefined = it exists but this viewer may not open it. */
+  const targetHref = (type: string, id: string): string | null | undefined => {
     if (type === 'donor') return `/donors/${id}`;
     if (type === 'request') return `/requests/${id}`;
-    if (type === 'user') return `/admin/users/${id}`;
+    if (type === 'user') return can(actor, 'users.manage') ? `/admin/users/${id}` : undefined;
     const slug = slugs.get(id);
     return slug ? `/communities/${slug}` : null;
   };
@@ -68,7 +70,18 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                 <dl className="dl">
                   <dt>{r.target}</dt>
                   <dd>
-                    {r.targetTypes[report.targetType]} · {href ? <Link href={href}>{r.openTarget}</Link> : <span className="muted">{r.targetMissing}</span>}
+                    {r.targetTypes[report.targetType]}
+                    {href ? (
+                      <>
+                        {' · '}
+                        <Link href={href}>{r.openTarget}</Link>
+                      </>
+                    ) : href === null ? (
+                      <>
+                        {' · '}
+                        <span className="muted">{r.targetMissing}</span>
+                      </>
+                    ) : null}
                   </dd>
                   {report.details && (
                     <>
@@ -77,7 +90,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                     </>
                   )}
                   <dt>{r.reporter}</dt>
-                  <dd>{report.reporterUserId ? <Link href={`/admin/users/${report.reporterUserId}`}>{reporterName}</Link> : r.anonymous}</dd>
+                  <dd>{report.reporterUserId ? can(actor, 'users.manage') ? <Link href={`/admin/users/${report.reporterUserId}`}>{reporterName}</Link> : reporterName : r.anonymous}</dd>
                   <dt>{r.created}</dt>
                   <dd>{dateTime(report.createdAt)}</dd>
                   {report.resolutionNote && (

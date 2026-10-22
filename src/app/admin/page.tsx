@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { getExternalProvider } from '@/server/notify/providers';
+import { can, type PlatformPermission } from '@/server/policy';
 import { platformStats } from '@/server/services/admin';
+import { recentStaffActivity, staffDonorStats } from '@/server/services/donor-admin';
 import { AdminAction } from '@/components/admin/AdminAction';
-import { Alert, Stat } from '@/components/ui';
+import { Alert, EmptyState, Stat } from '@/components/ui';
 import { runExpiryAction, sendQueuedAction } from './actions';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,11 +16,26 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminOverviewPage() {
-  const actor = await requireAdmin('/admin');
-  const { t, n } = await getI18n();
-  const s = await platformStats(actor);
+  const actor = await requirePermission('/admin', 'overview.view');
+  const { t, n, dateTime } = await getI18n();
+  const [s, d, activity] = await Promise.all([platformStats(actor), staffDonorStats(actor), recentStaffActivity(actor, 12)]);
   const a = t.admin.overview;
+  const actionLabels = t.admin.activity.actions as Record<string, string>;
   const providerOn = !!getExternalProvider();
+  const approvedOrganisations = s.communitiesByStatus.find((c) => c.status === 'approved')?.n ?? 0;
+  const shownInSearch = s.byGroup.reduce((sum, g) => sum + g.n, 0);
+  const roleLabel = (role: string | null) => (role === 'admin' || role === 'moderator' ? t.common.roles[role] : null);
+
+  /** A figure that links to its queue only when the viewer may open that queue. */
+  const queue = (value: number, label: string, href: string, permission: PlatformPermission) =>
+    can(actor, permission) ? (
+      <Link className="card-link" href={href}>
+        <Stat value={n(value)} label={label} />
+      </Link>
+    ) : (
+      <Stat value={n(value)} label={label} />
+    );
+
   return (
     <>
       <header className="stack-sm">
@@ -28,31 +45,49 @@ export default async function AdminOverviewPage() {
 
       <section className="stack" aria-labelledby="queues">
         <h2 id="queues">{a.queuesTitle}</h2>
-        <div className="grid grid-4">
-          <Link className="card-link" href="/admin/communities?status=pending">
-            <Stat value={n(s.queues.pendingCommunities)} label={a.pendingCommunities} />
-          </Link>
-          <Link className="card-link" href="/admin/verifications">
-            <Stat value={n(s.records.pending + s.donors.pendingVerification)} label={t.admin.nav.verifications} />
-          </Link>
-          <Link className="card-link" href="/admin/reports">
-            <Stat value={n(s.queues.openReports)} label={a.openReports} />
-          </Link>
-          <Link className="card-link" href="/admin/deletions">
-            <Stat value={n(s.queues.pendingDeletions)} label={a.pendingDeletions} />
-          </Link>
+        <div className="grid grid-3">
+          {queue(d.pending, a.pendingDonors, '/admin/donors?registration=pending', 'donors.review')}
+          {queue(s.records.pending + s.donors.pendingVerification, a.verificationQueue, '/admin/verifications', 'verifications.review')}
+          {queue(s.queues.openReports, a.openReports, '/admin/reports', 'reports.handle')}
+          {queue(s.queues.pendingCommunities, a.pendingCommunities, '/admin/communities?status=pending', 'communities.review')}
+          {queue(s.queues.pendingDeletions, a.pendingDeletions, '/admin/deletions', 'deletions.process')}
         </div>
       </section>
 
       <section className="stack" aria-labelledby="donors">
         <h2 id="donors">{a.donorsTitle}</h2>
         <div className="grid grid-4">
-          <Stat value={n(s.donors.total)} label={a.donorsTotal} />
-          <Stat value={n(s.donors.listed)} label={a.donorsListed} />
-          <Stat value={n(s.donors.availableNow)} label={a.availableNow} />
-          <Stat value={n(s.donors.verified)} label={a.verifiedProfiles} />
+          <Stat value={n(d.total)} label={a.donorsTotal} />
+          {queue(d.pending, t.common.registrationStatus.pending, '/admin/donors?registration=pending', 'donors.review')}
+          {queue(d.approved, t.common.registrationStatus.approved, '/admin/donors?registration=approved', 'donors.review')}
+          {queue(d.rejected, t.common.registrationStatus.rejected, '/admin/donors?registration=rejected', 'donors.review')}
+        </div>
+        <h3>{a.listingTitle}</h3>
+        <div className="grid grid-3">
+          <Stat value={n(shownInSearch)} label={a.shownInSearch} note={a.shownInSearchNote} />
+          <Stat value={n(d.deactivated)} label={a.pausedOrDeactivated} />
+          {queue(d.removed, a.removed, '/admin/donors?listing=removed', 'donors.review')}
+        </div>
+      </section>
+
+      <section className="stack" aria-labelledby="availability">
+        <h2 id="availability">{a.availabilityTitle}</h2>
+        <p className="muted">{a.availabilityIntro}</p>
+        <div className="grid grid-4">
+          <Stat value={n(d.available)} label={t.common.availability.available} />
+          <Stat value={n(d.unavailable)} label={t.common.availability.unavailable} />
+          <Stat value={n(d.unknown)} label={t.common.availability.unknown} />
+          <Stat value={n(d.staffSet)} label={a.staffSet} note={a.staffSetNote} />
         </div>
         <p className="small muted">{t.common.availability.explain}</p>
+      </section>
+
+      <section className="stack" aria-labelledby="verification">
+        <h2 id="verification">{a.verificationTitle}</h2>
+        <div className="grid grid-2">
+          <Stat value={n(s.donors.verified)} label={a.verifiedProfiles} note={a.unverifiedNote} />
+          <Stat value={n(s.queues.users)} label={a.usersTotal} />
+        </div>
         <h3>{a.byGroupTitle}</h3>
         {s.byGroup.length === 0 ? (
           <p className="muted">{t.admin.none}</p>
@@ -65,9 +100,6 @@ export default async function AdminOverviewPage() {
             ))}
           </div>
         )}
-        <p className="small muted">
-          {a.usersTotal}: {n(s.queues.users)}
-        </p>
       </section>
 
       <section className="stack" aria-labelledby="records">
@@ -83,6 +115,26 @@ export default async function AdminOverviewPage() {
 
       <section className="grid grid-2">
         <div className="card stack-sm">
+          <h2>{a.organisationsTitle}</h2>
+          <div className="grid grid-2">
+            {queue(s.queues.pendingCommunities, a.pendingCommunities, '/admin/communities?status=pending', 'communities.review')}
+            {queue(approvedOrganisations, a.activeOrganisations, '/admin/communities?status=approved', 'communities.review')}
+          </div>
+          <h3>{a.communitiesTitle}</h3>
+          {s.communitiesByStatus.length === 0 ? (
+            <p className="muted">{t.admin.none}</p>
+          ) : (
+            <dl className="dl">
+              {s.communitiesByStatus.map((c) => (
+                <div key={c.status} style={{ display: 'contents' }}>
+                  <dt>{t.common.communityStatus[c.status]}</dt>
+                  <dd>{n(c.n)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+        <div className="card stack-sm">
           <h2>{a.requestsTitle}</h2>
           {s.requestsByStatus.length === 0 ? (
             <p className="muted">{t.admin.none}</p>
@@ -97,21 +149,48 @@ export default async function AdminOverviewPage() {
             </dl>
           )}
         </div>
-        <div className="card stack-sm">
-          <h2>{a.communitiesTitle}</h2>
-          {s.communitiesByStatus.length === 0 ? (
-            <p className="muted">{t.admin.none}</p>
-          ) : (
-            <dl className="dl">
-              {s.communitiesByStatus.map((c) => (
-                <div key={c.status} style={{ display: 'contents' }}>
-                  <dt>{t.common.communityStatus[c.status]}</dt>
-                  <dd>{n(c.n)}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
+      </section>
+
+      <section className="stack" aria-labelledby="activity">
+        <h2 id="activity">{t.admin.activity.title}</h2>
+        <p className="muted">{t.admin.activity.intro}</p>
+        {activity.length === 0 ? (
+          <EmptyState title={t.admin.activity.empty} />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">{t.admin.activity.when}</th>
+                  <th scope="col">{t.admin.activity.who}</th>
+                  <th scope="col">{t.admin.activity.what}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activity.map((row) => {
+                  const role = roleLabel(row.actorRole);
+                  const href = row.targetType === 'donor' && row.targetId && can(actor, 'donors.review') ? `/admin/donors/${row.targetId}` : null;
+                  const label = actionLabels[row.action] ?? row.action;
+                  return (
+                    <tr key={row.id}>
+                      <td>{dateTime(row.createdAt)}</td>
+                      <td>
+                        {row.actorName ?? t.admin.activity.system}
+                        {role && <span className="small muted"> · {role}</span>}
+                      </td>
+                      <td>{href ? <Link href={href}>{label}</Link> : label}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {can(actor, 'audit.view') && (
+          <p>
+            <Link href="/admin/audit">{t.admin.activity.openAudit}</Link>
+          </p>
+        )}
       </section>
 
       <section className="card stack" aria-labelledby="deliveries">
@@ -127,14 +206,16 @@ export default async function AdminOverviewPage() {
         </dl>
       </section>
 
-      <section className="card stack" aria-labelledby="maintenance">
-        <h2 id="maintenance">{a.maintenanceTitle}</h2>
-        <p className="muted">{a.maintenanceIntro}</p>
-        <div className="grid grid-2">
-          <AdminAction action={runExpiryAction} hidden={{}} submit={a.runExpiry} pending={t.common.actions.submitting} />
-          <AdminAction action={sendQueuedAction} hidden={{}} submit={a.sendQueued} pending={t.common.actions.submitting} />
-        </div>
-      </section>
+      {can(actor, 'settings.manage') && (
+        <section className="card stack" aria-labelledby="maintenance">
+          <h2 id="maintenance">{a.maintenanceTitle}</h2>
+          <p className="muted">{a.maintenanceIntro}</p>
+          <div className="grid grid-2">
+            <AdminAction action={runExpiryAction} hidden={{}} submit={a.runExpiry} pending={t.common.actions.submitting} />
+            <AdminAction action={sendQueuedAction} hidden={{}} submit={a.sendQueued} pending={t.common.actions.submitting} />
+          </div>
+        </section>
+      )}
     </>
   );
 }

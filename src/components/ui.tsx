@@ -64,7 +64,7 @@ export function BloodGroupBadge({ group, small, label }: { group: string; small?
 const AVAILABILITY_TONE: Record<AvailabilityState, 'success' | 'neutral' | 'warning' | 'danger'> = {
   available: 'success',
   unavailable: 'neutral',
-  needs_confirmation: 'warning',
+  unknown: 'warning',
   restricted: 'danger',
 };
 
@@ -74,6 +74,26 @@ export function AvailabilityBadge({ state, t }: { state: AvailabilityState; t: M
       {state === 'available' ? <CircleCheck size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
       {t.common.availability[state]}
     </Badge>
+  );
+}
+
+/**
+ * Availability with who stated it and when. A staff override is always labelled as such and
+ * never presented as the donor's own confirmation. `updated` is an already formatted date.
+ */
+export function AvailabilityInfo({ state, source, updated, t, note }: { state: AvailabilityState; source: 'donor' | 'staff' | null; updated: string | null; t: Messages; note?: boolean }) {
+  const a = t.common.availability;
+  return (
+    <div className="availability-info">
+      <AvailabilityBadge state={state} t={t} />
+      {(source || updated) && (
+        <p className="small muted availability-meta">
+          {source && <span>{source === 'staff' ? a.sourceStaff : a.sourceDonor}</span>}
+          {updated && <span>{a.lastUpdated(updated)}</span>}
+        </p>
+      )}
+      {note && <p className="small muted availability-note">{a.mayNotRespond}</p>}
+    </div>
   );
 }
 

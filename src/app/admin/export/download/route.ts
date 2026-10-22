@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getActor } from '@/server/auth/current';
-import { isAdmin } from '@/server/policy';
+import { can } from '@/server/policy';
 import { hitRateLimit } from '@/server/security/rate-limit';
 import { getRequestMeta } from '@/server/security/request-meta';
 import { isSameOrigin } from '@/server/security/origin';
@@ -8,11 +8,11 @@ import { exportData, type ExportKind } from '@/server/services/admin';
 
 const KINDS: ExportKind[] = ['donors_by_area', 'requests_summary', 'donor_directory'];
 
-/** CSV export: same-origin POST, active admin, rate limited, password re-check and audit log (in exportData). */
+/** CSV export: same-origin POST, staff with the data.export permission, rate limited, password re-check and audit log (in exportData). */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return new NextResponse(null, { status: 403 });
   const actor = await getActor();
-  if (!actor || !isAdmin(actor)) return new NextResponse(null, { status: 404 });
+  if (!actor || !can(actor, 'data.export')) return new NextResponse(null, { status: 404 });
   const back = NextResponse.redirect(new URL('/admin/export?error=1', request.url), 303);
   let form: FormData;
   try {

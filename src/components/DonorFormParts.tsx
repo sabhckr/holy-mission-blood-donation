@@ -84,7 +84,15 @@ export function ProfileFields({
     <>
       {withName && <TextField name="fullName" label={labels.fullName} autoComplete="name" required maxLength={80} defaultValue={defaults?.fullName} />}
       <TextField name="dateOfBirth" type="date" label={labels.dateOfBirth} hint={labels.dateOfBirthHint} required max={maxDate} defaultValue={defaults?.dateOfBirth} />
-      <RadioGroup name="bloodGroup" legend={labels.bloodGroup} tiles options={bloodGroups.map((g) => ({ value: g, label: g }))} defaultValue={defaults?.bloodGroup} />
+      <RadioGroup
+        name="bloodGroup"
+        legend={labels.bloodGroup}
+        tiles
+        required
+        requiredKey="invalidBloodGroup"
+        options={bloodGroups.map((g) => ({ value: g, label: g }))}
+        defaultValue={defaults?.bloodGroup}
+      />
       <LocationPicker locations={locations} labels={labels.location} defaults={defaults} />
       <TextField name="locality" label={labels.locality} hint={labels.localityHint} optionalLabel={labels.optional} maxLength={80} defaultValue={defaults?.locality} />
       {withContactPhone && labels.contactPhone && (

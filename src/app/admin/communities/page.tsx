@@ -2,12 +2,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
+import { formatBdPhone } from '@/server/domain/phone';
 import { adminCommunities } from '@/server/services/admin';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { AdminAction } from '@/components/admin/AdminAction';
+import { AffiliationBadge } from '@/components/admin/StatusBadges';
 import { Badge, EmptyState } from '@/components/ui';
-import { reviewCommunityAction } from '../actions';
+import { reviewCommunityAction, setAffiliationAction } from '../actions';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -17,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const STATUSES = ['pending', 'approved', 'suspended', 'rejected'] as const;
 
 export default async function AdminCommunitiesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  const actor = await requireAdmin('/admin/communities');
+  const actor = await requirePermission('/admin/communities', 'communities.review');
   const { t, n, instantDate, locale } = await getI18n();
   const parsed = z.enum(STATUSES).safeParse((await searchParams).status);
   const status = parsed.success ? parsed.data : null;
@@ -25,6 +27,7 @@ export default async function AdminCommunitiesPage({ searchParams }: { searchPar
   const c = t.admin.communities;
   const pending = t.common.actions.submitting;
   const reasonField = { name: 'reason', label: c.decisionReason, hint: t.admin.reasonHint };
+  const requiredReason = { name: 'reason', label: t.admin.reasonLabel, hint: t.admin.reasonHint, required: true };
   return (
     <>
       <header className="stack-sm">
@@ -49,9 +52,16 @@ export default async function AdminCommunitiesPage({ searchParams }: { searchPar
             <li key={community.id} className="card stack-sm">
               <div className="cluster between">
                 <h2 className="card-title">{community.name}</h2>
-                <Badge tone={community.status === 'approved' ? 'success' : community.status === 'pending' ? 'warning' : 'danger'}>{t.common.communityStatus[community.status]}</Badge>
+                <span className="cluster-sm">
+                  <Badge tone={community.status === 'approved' ? 'success' : community.status === 'pending' ? 'warning' : 'danger'}>{t.common.communityStatus[community.status]}</Badge>
+                  <AffiliationBadge affiliation={community.affiliation} t={t} />
+                </span>
               </div>
               <dl className="dl">
+                <dt>{c.status}</dt>
+                <dd>{t.common.communityStatus[community.status]}</dd>
+                <dt>{c.affiliation}</dt>
+                <dd>{t.common.affiliation[community.affiliation]}</dd>
                 <dt>{c.district}</dt>
                 <dd>{labelFrom(index, locale, community.districtId, community.divisionId)}</dd>
                 <dt>{c.members}</dt>
@@ -68,6 +78,28 @@ export default async function AdminCommunitiesPage({ searchParams }: { searchPar
                 )}
               </dl>
               {community.description && <p className="small">{community.description}</p>}
+              <section className="card card-tight stack-sm" aria-labelledby={`rep-${community.id}`}>
+                <h3 id={`rep-${community.id}`}>{c.representativeTitle}</h3>
+                <p className="hint">{c.representativeIntro}</p>
+                <dl className="dl">
+                  <dt>{c.representativeName}</dt>
+                  <dd>{community.representativeName ?? <span className="muted">{c.notProvided}</span>}</dd>
+                  <dt>{c.representativeRole}</dt>
+                  <dd>{community.representativeRole ?? <span className="muted">{c.notProvided}</span>}</dd>
+                  <dt>{c.representativePhone}</dt>
+                  <dd>
+                    {community.representativePhone?.startsWith('+880') ? (
+                      <a className="phone-reveal" href={`tel:${community.representativePhone}`}>
+                        {formatBdPhone(community.representativePhone)}
+                      </a>
+                    ) : (
+                      <span className="muted">{c.notProvided}</span>
+                    )}
+                  </dd>
+                  <dt>{c.verificationInfo}</dt>
+                  <dd style={{ whiteSpace: 'pre-line' }}>{community.verificationInfo ?? <span className="muted">{c.notProvided}</span>}</dd>
+                </dl>
+              </section>
               <div className="cluster-sm">
                 <Link href={`/communities/${community.slug}`}>{c.publicPage}</Link>
                 <Link href={`/manage/${community.slug}`}>{c.manage}</Link>
@@ -86,6 +118,27 @@ export default async function AdminCommunitiesPage({ searchParams }: { searchPar
                   <AdminAction action={reviewCommunityAction} hidden={{ communityId: community.id, decision: 'approved' }} submit={community.status === 'suspended' ? c.reinstate : c.approve} pending={pending} tone="primary" note={reasonField} />
                 )}
               </div>
+              <details className="disclosure">
+                <summary>{c.affiliation}</summary>
+                <div className="stack-sm">
+                  <p className="hint">{c.affiliationIntro}</p>
+                  {community.affiliation === 'holy_mission' ? (
+                    <AdminAction action={setAffiliationAction} hidden={{ communityId: community.id, affiliation: 'independent' }} submit={c.makeIndependent} pending={pending} note={requiredReason} />
+                  ) : community.status === 'approved' ? (
+                    <AdminAction
+                      action={setAffiliationAction}
+                      hidden={{ communityId: community.id, affiliation: 'holy_mission' }}
+                      submit={c.makeHolyMission}
+                      pending={pending}
+                      tone="primary"
+                      note={requiredReason}
+                      confirm={c.confirmHolyMission}
+                    />
+                  ) : (
+                    <p className="small muted">{c.onlyApproved}</p>
+                  )}
+                </div>
+              </details>
             </li>
           ))}
         </ul>

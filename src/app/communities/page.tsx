@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Building2, MapPin, Users } from 'lucide-react';
+import { BadgeCheck, Building2, MapPin, Users } from 'lucide-react';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
 import { listCommunities } from '@/server/services/communities';
@@ -87,9 +87,17 @@ export default async function CommunitiesPage({ searchParams }: { searchParams: 
                     <Link href={`/communities/${item.slug}`}>{locale === 'en' && item.nameEn ? item.nameEn : item.name}</Link>
                   </h3>
                   <div className="cluster-sm">
+                    <Badge tone="success">
+                      <BadgeCheck size={14} aria-hidden="true" />
+                      {t.common.communityStatus.approved}
+                    </Badge>
+                    <Badge tone={item.affiliation === 'holy_mission' ? 'info' : 'neutral'}>{t.common.affiliation[item.affiliation]}</Badge>
                     <Badge tone="neutral">{t.common.communityKind[item.kind]}</Badge>
-                    {item.foundedYear && <span className="small muted">{c.foundedIn(n(item.foundedYear).replace(/[,٬]/g, ''))}</span>}
                   </div>
+                  <p className="small muted" style={{ margin: 0 }}>
+                    {item.affiliation === 'holy_mission' ? t.common.affiliation.holyMissionNote : t.common.affiliation.independentNote}
+                  </p>
+                  {item.foundedYear && <p className="small muted" style={{ margin: 0 }}>{c.foundedIn(n(item.foundedYear).replace(/[,٬]/g, ''))}</p>}
                   <p className="small muted" style={{ margin: 0 }}>
                     <MapPin size={14} aria-hidden="true" /> {labelFrom(index, locale, item.districtId)} ·{' '}
                     <Users size={14} aria-hidden="true" /> {c.members(n(item.memberCount))}

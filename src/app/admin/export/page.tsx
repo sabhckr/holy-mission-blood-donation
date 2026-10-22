@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { Alert } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -12,7 +12,7 @@ const KINDS = ['donors_by_area', 'requests_summary', 'donor_directory'] as const
 
 /** A plain POST form (no JavaScript needed); the route handler streams the CSV download. */
 export default async function AdminExportPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  await requireAdmin('/admin/export');
+  await requirePermission('/admin/export', 'data.export');
   const { t } = await getI18n();
   const e = t.admin.export;
   const failed = (await searchParams).error === '1';

@@ -2,25 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { formatBdPhone } from '@/server/domain/phone';
 import { getRequestMeta } from '@/server/security/request-meta';
 import { getUserDetail } from '@/server/services/admin';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
+import { can } from '@/server/policy';
 import { AdminAction } from '@/components/admin/AdminAction';
 import { OneTimeValue } from '@/components/admin/AdminForms';
-import { Alert, AvailabilityBadge, Badge, Breadcrumbs, VerificationBadge } from '@/components/ui';
-import {
-  issueResetAction,
-  processDeletionAction,
-  reviewDonationAction,
-  reviewProfileAction,
-  revokeSessionsAction,
-  setDonorRestrictionAction,
-  setUserRoleAction,
-  setUserStatusAction,
-  voidDonationAction,
-} from '../../actions';
+import { ConsentSummary } from '@/components/admin/ConsentSummary';
+import { ListingBadge, RegistrationBadge, StatedAvailabilityBadge, statedAvailability } from '@/components/admin/StatusBadges';
+import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
+import { RadioGroup, TextField } from '@/components/form/fields';
+import { Alert, Badge, Breadcrumbs, VerificationBadge } from '@/components/ui';
+import { issueResetAction, processDeletionAction, reviewDonationAction, revokeSessionsAction, setUserRoleAction, setUserStatusAction, voidDonationAction } from '../../actions';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -30,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const actor = await requireAdmin(`/admin/users/${id}`);
+  const actor = await requirePermission(`/admin/users/${id}`, 'users.manage');
   const i18n = await getI18n();
   const { t, n, date, instantDate, dateTime, locale } = i18n;
   const meta = await getRequestMeta();
@@ -40,25 +35,23 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   } catch {
     notFound();
   }
-  const { user, donor, consent, availability, memberships, sessionCount, deletion, donations } = detail;
+  const { user, donor, consent, memberships, sessionCount, deletion, donations } = detail;
   const index = await getLocationIndex();
   const u = t.admin.user;
   const pending = t.common.actions.submitting;
   const self = user.id === actor.userId;
   const deleted = user.status === 'deleted';
   const pendingDeletion = deletion.find((d) => d.status === 'pending');
-  const vis = t.common.visibility;
-  const yesNo = (v: boolean) => (v ? t.common.states.yes : t.common.states.no);
   const noteField = { name: 'note', label: t.admin.noteLabel, hint: t.admin.reasonHint };
   const reasonField = { name: 'reason', label: t.admin.reasonLabel, hint: t.admin.reasonHint };
 
   return (
     <>
       <header className="stack-sm">
-        <Breadcrumbs items={[{ href: '/admin/users', label: t.admin.users.title }]} />
+        <Breadcrumbs items={[{ href: '/admin/users', label: t.admin.users.title }]} label={t.common.nav.breadcrumbs} />
         <h1>{user.displayName}</h1>
         <div className="cluster-sm">
-          <Badge tone={user.role === 'admin' ? 'info' : 'neutral'}>{t.common.roles[user.role]}</Badge>
+          <Badge tone={user.role === 'user' ? 'neutral' : 'info'}>{t.common.roles[user.role]}</Badge>
           <Badge tone={user.status === 'active' ? 'success' : user.status === 'suspended' ? 'danger' : 'neutral'}>{t.common.accountStatus[user.status]}</Badge>
         </div>
       </header>
@@ -104,8 +97,14 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
               <dd>{[donor.locality, labelFrom(index, locale, donor.upazilaId, donor.districtId, donor.divisionId)].filter(Boolean).join(', ')}</dd>
               <dt>{u.contactPhone}</dt>
               <dd>{donor.contactPhone.startsWith('+880') ? formatBdPhone(donor.contactPhone) : '—'}</dd>
-              <dt>{u.profileStatus}</dt>
-              <dd>{u.profileStatusValues[donor.status]}</dd>
+              <dt>{u.registration}</dt>
+              <dd>
+                <RegistrationBadge status={donor.registrationStatus} t={t} />
+              </dd>
+              <dt>{u.listing}</dt>
+              <dd>
+                <ListingBadge status={donor.status} t={t} />
+              </dd>
               {donor.restrictedReason && (
                 <>
                   <dt>{u.restrictedReason}</dt>
@@ -113,40 +112,29 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
                 </>
               )}
               <dt>{u.availability}</dt>
-              <dd>{availability && <AvailabilityBadge state={availability} t={t} />}</dd>
+              <dd>
+                <StatedAvailabilityBadge state={statedAvailability(donor)} source={donor.availabilitySource} t={t} />
+              </dd>
               <dt>{u.verification}</dt>
               <dd>
                 <VerificationBadge status={donor.verificationStatus} t={t} />
               </dd>
             </dl>
-            <p>
-              <Link href={`/donors/${donor.publicId}`}>{u.publicProfile}</Link>
+            <p className="hint">{u.donorRecordHint}</p>
+            <p className="cluster">
+              {can(actor, 'donors.review') && (
+                <Link className="btn btn-sm btn-primary" href={`/admin/donors/${donor.id}`}>
+                  {u.openDonorRecord}
+                </Link>
+              )}
+              {donor.registrationStatus === 'approved' && donor.status === 'active' && user.status === 'active' && consent?.listedInSearch && (
+                <Link href={`/donors/${donor.publicId}`}>{u.publicProfile}</Link>
+              )}
             </p>
             {consent && (
               <>
-                <h3>{u.consentsTitle}</h3>
-                <dl className="dl">
-                  <dt>{u.consentListed}</dt>
-                  <dd>{yesNo(consent.listedInSearch)}</dd>
-                  <dt>{u.consentName}</dt>
-                  <dd>{vis[consent.nameVisibility]}</dd>
-                  <dt>{u.consentPhone}</dt>
-                  <dd>{vis[consent.phoneVisibility]}</dd>
-                  <dt>{u.consentLocality}</dt>
-                  <dd>{vis[consent.localityVisibility]}</dd>
-                  <dt>{u.consentHistory}</dt>
-                  <dd>{vis[consent.donationHistoryVisibility]}</dd>
-                  <dt>{u.consentCommunity}</dt>
-                  <dd>{vis[consent.communityVisibility]}</dd>
-                  <dt>{u.consentCoordinator}</dt>
-                  <dd>{yesNo(consent.allowCoordinatorContact)}</dd>
-                  <dt>{u.consentRequests}</dt>
-                  <dd>{yesNo(consent.allowContactRequests)}</dd>
-                  <dt>{u.consentAt}</dt>
-                  <dd>
-                    {instantDate(consent.consentedAt)} · {consent.policyVersion}
-                  </dd>
-                </dl>
+                <h3>{t.admin.consent.title}</h3>
+                <ConsentSummary consent={consent} t={t} instantDate={instantDate} />
               </>
             )}
           </>
@@ -234,40 +222,26 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
               </details>
               <details className="disclosure">
                 <summary>{u.roleTitle}</summary>
-                <p className="hint">{u.roleHint}</p>
-                <AdminAction
-                  action={setUserRoleAction}
-                  hidden={{ userId: user.id, role: user.role === 'admin' ? 'user' : 'admin' }}
-                  submit={user.role === 'admin' ? u.removeAdmin : u.makeAdmin}
-                  pending={pending}
-                  tone={user.role === 'admin' ? 'danger' : 'primary'}
-                  password={{ label: t.admin.yourPassword, hint: t.admin.yourPasswordHint }}
-                />
+                <p className="hint">{u.roleIntro}</p>
+                <ActionForm action={setUserRoleAction} className="stack-sm" aria-label={u.roleTitle}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <RadioGroup
+                    name="role"
+                    legend={u.newRole}
+                    hint={u.roleHint}
+                    defaultValue={user.role}
+                    options={(['user', 'moderator', 'admin'] as const).map((r) => ({ value: r, label: t.common.roles[r] }))}
+                  />
+                  <TextField name="password" type="password" label={t.admin.yourPassword} hint={t.admin.yourPasswordHint} autoComplete="current-password" required maxLength={128} />
+                  <div className="form-actions">
+                    <SubmitButton label={u.changeRole} pendingLabel={pending} className="btn btn-primary btn-sm" />
+                  </div>
+                </ActionForm>
               </details>
               <details className="disclosure">
                 <summary>{u.sessionsTitle}</summary>
                 <AdminAction action={revokeSessionsAction} hidden={{ userId: user.id }} submit={u.revokeSessions} pending={pending} tone="danger" />
               </details>
-              {donor && (
-                <>
-                  <details className="disclosure">
-                    <summary>{u.restrictTitle}</summary>
-                    <p className="hint">{u.restrictHint}</p>
-                    {donor.status === 'restricted' ? (
-                      <AdminAction action={setDonorRestrictionAction} hidden={{ donorId: donor.id, restricted: '0' }} submit={u.unrestrict} pending={pending} tone="primary" note={reasonField} />
-                    ) : (
-                      <AdminAction action={setDonorRestrictionAction} hidden={{ donorId: donor.id, restricted: '1' }} submit={u.restrict} pending={pending} tone="danger" note={reasonField} />
-                    )}
-                  </details>
-                  <details className="disclosure">
-                    <summary>{u.profileVerifyTitle}</summary>
-                    <div className="grid grid-2">
-                      <AdminAction action={reviewProfileAction} hidden={{ donorId: donor.id, decision: 'verified' }} submit={u.verifyProfile} pending={pending} tone="primary" note={noteField} />
-                      <AdminAction action={reviewProfileAction} hidden={{ donorId: donor.id, decision: 'rejected' }} submit={u.rejectProfile} pending={pending} tone="danger" note={noteField} />
-                    </div>
-                  </details>
-                </>
-              )}
               <details className="disclosure">
                 <summary>{u.resetTitle}</summary>
                 <p className="hint">{u.resetIntro}</p>

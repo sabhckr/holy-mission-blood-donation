@@ -91,3 +91,20 @@ describe('membership management', () => {
     expect(canRemoveMember(leaderCaps, 'leader', 'coordinator')).toBe(true);
   });
 });
+
+describe('platform staff permissions', () => {
+  const mod = user({ userId: 'm', role: 'moderator' });
+  it('gives moderators donor work only, admins everything, users nothing', async () => {
+    const { can, PLATFORM_PERMISSIONS, MODERATOR_PERMISSIONS, isStaff } = await import('@/server/policy');
+    for (const p of PLATFORM_PERMISSIONS) {
+      expect(can(admin, p)).toBe(true);
+      expect(can(user(), p)).toBe(false);
+      expect(can(mod, p)).toBe(MODERATOR_PERMISSIONS.includes(p));
+    }
+    for (const p of ['communities.review', 'operating_areas.manage', 'settings.manage', 'users.manage', 'data.export', 'deletions.process', 'audit.view'] as const) {
+      expect(can(mod, p)).toBe(false);
+    }
+    expect(isStaff(mod)).toBe(true);
+    expect(can({ ...mod, status: 'suspended' }, 'donors.review')).toBe(false);
+  });
+});

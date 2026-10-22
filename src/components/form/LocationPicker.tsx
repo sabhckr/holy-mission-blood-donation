@@ -90,6 +90,7 @@ function LocationPickerInner({
           value={value ?? ''}
           disabled={disabled}
           aria-required={required[level]}
+          data-required-key={required[level] ? 'invalidLocation' : undefined}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${fieldId}-error` : undefined}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { pendingDeletionRequests } from '@/server/services/admin';
 import { AdminAction } from '@/components/admin/AdminAction';
 import { EmptyState } from '@/components/ui';
@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminDeletionsPage() {
-  const actor = await requireAdmin('/admin/deletions');
+  const actor = await requirePermission('/admin/deletions', 'deletions.process');
   const { t, dateTime } = await getI18n();
   const rows = await pendingDeletionRequests(actor);
   const d = t.admin.deletions;

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { DONATION_TYPES } from '@/server/domain/constants';
 import { SETTINGS_LIMITS } from '@/server/domain/settings-defaults';
 import { getSettings } from '@/server/services/settings';
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminSettingsPage() {
-  await requireAdmin('/admin/settings');
+  await requirePermission('/admin/settings', 'settings.manage');
   const { t, n } = await getI18n();
   const settings = await getSettings();
   const s = t.admin.settings;

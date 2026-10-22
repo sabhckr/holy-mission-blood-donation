@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { pendingProfileVerificationsAll } from '@/server/services/admin-queries';
 import { pendingDonationReviews } from '@/server/services/donations';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminVerificationsPage() {
-  const actor = await requireAdmin('/admin/verifications');
+  const actor = await requirePermission('/admin/verifications', 'verifications.review');
   const { t, date, instantDate, locale } = await getI18n();
   const [records, profiles, index] = await Promise.all([pendingDonationReviews(null), pendingProfileVerificationsAll(actor), getLocationIndex()]);
   const v = t.admin.verifications;
@@ -38,7 +38,7 @@ export default async function AdminVerificationsPage() {
               <li key={r.id} className="card card-tight stack-sm">
                 <div className="cluster between">
                   <strong>
-                    <Link href={`/admin/users/${r.donorUserId}`}>{r.donorName}</Link> · {r.bloodGroup}
+                    <Link href={`/admin/donors/${r.donorId}`}>{r.donorName}</Link> · {r.bloodGroup}
                   </strong>
                   <span className="small muted">
                     {v.submitted}: {instantDate(r.createdAt)}
@@ -86,7 +86,7 @@ export default async function AdminVerificationsPage() {
               <li key={p.donorId} className="card card-tight stack-sm">
                 <div className="cluster between">
                   <strong>
-                    <Link href={`/admin/users/${p.userId}`}>{p.fullName}</Link> · {p.bloodGroup}
+                    <Link href={`/admin/donors/${p.donorId}`}>{p.fullName}</Link> · {p.bloodGroup}
                   </strong>
                   <span className="small muted">
                     {v.submitted}: {instantDate(p.requestedAt)}

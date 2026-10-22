@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ShieldCheck } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
@@ -8,7 +9,8 @@ import { getPublicDonorProfile } from '@/server/services/donors';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { ContactRequestForm, RevealPhone } from '@/components/ContactDonor';
 import { ReportForm } from '@/components/ReportForm';
-import { Alert, AvailabilityBadge, BloodGroupBadge, Disclaimer, PageHeader, VerificationBadge } from '@/components/ui';
+import { clientValidationMessages } from '@/components/form/client-messages';
+import { Alert, AvailabilityInfo, BloodGroupBadge, Disclaimer, PageHeader, VerificationBadge } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -53,11 +55,13 @@ export default async function DonorProfilePage({ params }: { params: Promise<{ p
               {donor.localityHidden && <span className="small muted"> ({t.common.states.notShared})</span>}
             </dd>
             <dt>{t.donor.availability}</dt>
-            <dd className="stack-sm">
-              <AvailabilityBadge state={donor.availability} t={t} />
-              {donor.availabilityConfirmedAt && donor.availability === 'available' && (
-                <span className="small muted">{t.common.availability.confirmedOn(i18n.instantDate(donor.availabilityConfirmedAt))}</span>
-              )}
+            <dd>
+              <AvailabilityInfo
+                state={donor.availability}
+                source={donor.availabilitySource}
+                updated={donor.availabilityConfirmedAt ? i18n.instantDate(donor.availabilityConfirmedAt) : null}
+                t={t}
+              />
             </dd>
             <dt>{t.donor.verification}</dt>
             <dd>
@@ -82,6 +86,7 @@ export default async function DonorProfilePage({ params }: { params: Promise<{ p
             </dd>
           </dl>
           <p className="small muted">{t.common.availability.explain}</p>
+          {!donor.isOwner && <p className="small muted">{t.common.availability.mayNotRespond}</p>}
           <h3>{t.donor.donationRecords}</h3>
           {donor.stats ? (
             <dl className="dl">
@@ -98,9 +103,16 @@ export default async function DonorProfilePage({ params }: { params: Promise<{ p
         </section>
 
         {!donor.isOwner && (
-          <section className="stack" aria-labelledby="contact" id="contact">
+          <section className="stack" aria-labelledby="contact-title" id="contact">
             <div className="card stack">
-              <h2 id="contact">{t.donor.contactTitle}</h2>
+              <h2 id="contact-title">{t.donor.contactTitle}</h2>
+              <div className="consent-note">
+                <h3 className="cluster-sm">
+                  <ShieldCheck size={18} aria-hidden="true" />
+                  {t.donor.consentTitle}
+                </h3>
+                <p className="small">{t.donor.consentBody}</p>
+              </div>
               {!signedIn ? (
                 <>
                   <p>{t.donor.contactSignIn}</p>
@@ -131,6 +143,7 @@ export default async function DonorProfilePage({ params }: { params: Promise<{ p
                     <ContactRequestForm
                       publicId={donor.publicId}
                       labels={{ message: t.donor.requestMessage, hint: t.donor.requestMessageHint, send: t.donor.requestSend, sending: t.common.actions.submitting, explain: t.donor.requestExplain }}
+                      clientMessages={clientValidationMessages(t)}
                     />
                   ) : (
                     <p className="muted">{t.donor.requestsClosed}</p>
@@ -145,6 +158,7 @@ export default async function DonorProfilePage({ params }: { params: Promise<{ p
               targetId={donor.publicId}
               reasons={REPORT_REASONS.map((r) => ({ value: r, label: t.common.report.reasons[r] }))}
               labels={{ title: t.common.report.title, reason: t.common.report.reason, details: t.common.report.details, detailsHint: t.common.report.detailsHint, submit: t.common.report.submit, submitting: t.common.actions.submitting, choose: t.common.report.reason }}
+              clientMessages={clientValidationMessages(t)}
             />
           </section>
         )}

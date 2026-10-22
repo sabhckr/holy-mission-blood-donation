@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { maskBdPhone } from '@/server/domain/phone';
 import { searchUsers } from '@/server/services/admin';
 import { Badge, EmptyState, Pagination, VerificationBadge } from '@/components/ui';
@@ -14,13 +14,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const schema = z.object({
   q: z.string().trim().max(80).optional().catch(undefined),
-  role: z.enum(['user', 'admin']).optional().catch(undefined),
+  role: z.enum(['user', 'moderator', 'admin']).optional().catch(undefined),
   status: z.enum(['active', 'deactivated', 'suspended', 'deleted']).optional().catch(undefined),
   page: z.coerce.number().int().min(1).max(10_000).optional().catch(undefined),
 });
 
 export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const actor = await requireAdmin('/admin/users');
+  const actor = await requirePermission('/admin/users', 'users.manage');
   const { t, n, instantDate } = await getI18n();
   const sp = await searchParams;
   const f = schema.parse(Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
@@ -46,8 +46,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
             </label>
             <select id="u-role" className="select" name="role" defaultValue={f.role ?? ''}>
               <option value="">{t.admin.any}</option>
-              <option value="user">{t.common.roles.user}</option>
-              <option value="admin">{t.common.roles.admin}</option>
+              {(['user', 'moderator', 'admin'] as const).map((r) => (
+                <option key={r} value={r}>
+                  {t.common.roles[r]}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">

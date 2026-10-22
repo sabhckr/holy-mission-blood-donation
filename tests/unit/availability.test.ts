@@ -7,12 +7,12 @@ const base = { accountStatus: 'active' as const, profileStatus: 'active' as cons
 describe('availability state', () => {
   it('is available only while a recent confirmation has not expired', () => {
     expect(availabilityState({ ...base, availabilityStatus: 'available', availabilityExpiresAt: new Date('2026-10-23T00:00:00Z') }, now)).toBe('available');
-    expect(availabilityState({ ...base, availabilityStatus: 'available', availabilityExpiresAt: new Date('2026-10-22T05:59:59Z') }, now)).toBe('needs_confirmation');
-    expect(availabilityState({ ...base, availabilityStatus: 'available', availabilityExpiresAt: now }, now)).toBe('needs_confirmation');
+    expect(availabilityState({ ...base, availabilityStatus: 'available', availabilityExpiresAt: new Date('2026-10-22T05:59:59Z') }, now)).toBe('unknown');
+    expect(availabilityState({ ...base, availabilityStatus: 'available', availabilityExpiresAt: now }, now)).toBe('unknown');
   });
 
   it('needs confirmation when the donor never said anything', () => {
-    expect(availabilityState({ ...base, availabilityStatus: null, availabilityExpiresAt: null }, now)).toBe('needs_confirmation');
+    expect(availabilityState({ ...base, availabilityStatus: null, availabilityExpiresAt: null }, now)).toBe('unknown');
   });
 
   it('respects an explicit "not available"', () => {

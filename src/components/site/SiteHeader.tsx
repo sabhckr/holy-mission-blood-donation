@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Bell, Menu } from 'lucide-react';
 import type { Messages } from '@/i18n/messages';
 import type { Locale } from '@/i18n/config';
-import type { Actor } from '@/server/policy';
+import { isStaff, type Actor } from '@/server/policy';
 import { BrandMark } from './BrandMark';
 import { LanguageSwitch } from './LanguageSwitch';
 
@@ -41,7 +41,7 @@ export function SiteHeader({
     ? [
         { href: '/account', label: t.common.nav.account },
         ...(manageSlug ? [{ href: `/manage/${manageSlug}`, label: t.common.nav.manageCommunity }] : []),
-        ...(actor.role === 'admin' ? [{ href: '/admin', label: t.common.nav.admin }] : []),
+        ...(isStaff(actor) ? [{ href: '/admin', label: t.common.nav.admin }] : []),
       ]
     : [];
   const link = (item: NavItem) => (

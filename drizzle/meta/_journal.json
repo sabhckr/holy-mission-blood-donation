@@ -15,6 +15,20 @@
       "when": 1792647732398,
       "tag": "0001_normalize_bangla_text",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792652380464,
+      "tag": "0002_review_roles_operating_areas",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792664284559,
+      "tag": "0003_organisation_representative",
+      "breakpoints": true
     }
   ]
 }

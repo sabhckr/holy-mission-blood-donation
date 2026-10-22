@@ -4,6 +4,7 @@ import { getI18n } from '@/i18n/server';
 import { checkResetToken } from '@/server/services/accounts';
 import { resetPasswordAction } from '../../_actions/auth';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
+import { clientValidationMessages } from '@/components/form/client-messages';
 import { TextField } from '@/components/form/fields';
 import { Alert, PageHeader } from '@/components/ui';
 
@@ -22,7 +23,7 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
       <div className="container container-narrow section stack">
         {valid ? (
           <div className="card">
-            <ActionForm action={resetPasswordAction}>
+            <ActionForm action={resetPasswordAction} clientMessages={clientValidationMessages(t)}>
               <input type="hidden" name="token" value={token} />
               <TextField name="password" label={t.auth.newPassword} hint={t.auth.passwordHint} type="password" autoComplete="new-password" required maxLength={128} />
               <TextField name="confirmPassword" label={t.auth.confirmPassword} type="password" autoComplete="new-password" required maxLength={128} />

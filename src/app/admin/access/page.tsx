@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { accessReview } from '@/server/services/admin';
 import { AdminAction } from '@/components/admin/AdminAction';
 import { Badge, EmptyState } from '@/components/ui';
@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminAccessPage() {
-  const actor = await requireAdmin('/admin/access');
+  const actor = await requirePermission('/admin/access', 'access.review');
   const { t, n, dateTime, instantDate } = await getI18n();
   const { admins, leaders } = await accessReview(actor);
   const a = t.admin.access;

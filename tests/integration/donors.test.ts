@@ -55,18 +55,18 @@ describe('donor search', () => {
     expect((await searchDonors({ bloodGroup: 'AB-' }, null)).total).toBe(0);
   });
 
-  it('treats expired availability as needing confirmation', async () => {
+  it('lists only donors currently marked available; expired confirmations become unknown', async () => {
     const fresh = await makeDonor();
     const stale = await makeDonor();
+    const notNow = await makeDonor();
+    await setAvailability(notNow.actor, 'unavailable');
     await db.update(donorProfiles).set({ availabilityExpiresAt: sql`now() - interval '1 day'` }).where(eq(donorProfiles.id, stale.donor.id));
     const all = await searchDonors({}, null);
-    const states = Object.fromEntries(all.items.map((d) => [d.publicId, d.availability]));
-    expect(states[fresh.donor.publicId]).toBe('available');
-    expect(states[stale.donor.publicId]).toBe('needs_confirmation');
-    expect((await searchDonors({ availableOnly: true }, null)).total).toBe(1);
-    expect(all.items[0].publicId).toBe(fresh.donor.publicId); // available donors sort first
+    expect(all.items.map((d) => d.publicId)).toEqual([fresh.donor.publicId]);
+    expect((await getPublicDonorProfile(stale.donor.publicId, null))?.availability).toBe('unknown');
+    expect((await getPublicDonorProfile(notNow.donor.publicId, null))?.availability).toBe('unavailable');
     await setAvailability(stale.actor, 'available');
-    expect((await searchDonors({ availableOnly: true }, null)).total).toBe(2);
+    expect((await searchDonors({}, null)).total).toBe(2);
   });
 
   it('never matches a locality filter against a hidden locality', async () => {

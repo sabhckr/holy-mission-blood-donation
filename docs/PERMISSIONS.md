@@ -12,7 +12,8 @@ Roles:
 - **Member / Coordinator / Leader** – active membership in an organisation (community).
   Capabilities only apply while the community is **approved**; a pending community's leader may
   only edit its profile; suspended or rejected communities lose all powers.
-- **Admin** – platform administrator (`users.role = 'admin'`).
+- **Moderator** – platform staff with a limited permission set (`users.role = 'moderator'`).
+- **Admin** – platform administrator (`users.role = 'admin'`), every staff permission.
 
 Suspended or deleted accounts have no session at all. Deactivated accounts can only sign in to
 reactivate.
@@ -25,7 +26,7 @@ Each donor chooses a visibility for every category: `public`, `signed_in`, `coor
 |---|---|---|---|---|
 | Visitor | ✓ | – | – | – |
 | User (incl. coordinators on public pages) | ✓ | ✓ | – | – |
-| Coordinator inside their donor finder · Admin | ✓ | ✓ | ✓ | – |
+| Coordinator inside their donor finder · Staff who manage donor records | ✓ | ✓ | ✓ | – |
 | The donor | ✓ | ✓ | ✓ | ✓ |
 
 Extra rules:
@@ -33,12 +34,18 @@ Extra rules:
 - **Phone numbers** can never be `public` (form, service and a database CHECK constraint).
   Numbers are never part of a page; a signed-in viewer must press "Show number", which is
   rate-limited (20/day) and audit-logged without the number.
-- **Search** lists only donors who opted in (`listed_in_search`), with active profiles and
-  accounts. A locality filter only matches localities visible to that viewer.
+- **Search** lists only donors who opted in (`listed_in_search`), whose registration staff
+  approved, with active listings and accounts, and who are currently marked available. A locality
+  filter only matches localities visible to that viewer. See [STATUSES.md](STATUSES.md).
 - **Coordinator donor finder** lists only donors who opted in to coordinator contact *and* live
   inside the community's service area. Membership is not required, and several communities can
   reach the same donor.
 - **Date of birth** is never shown to anyone but the donor; coordinators see age only.
+- **Organisation representative and verification details** (name, role, mobile number,
+  verification information) are seen only by admins reviewing organisations and by that
+  organisation's own leaders on its settings page. They are never part of public pages, lists
+  or another organisation's tools (`publicCommunity` leaves them out; tested in
+  `tests/integration/organisation-isolation.test.ts`).
 - **Contact requests**: the donor sees the requester's name and message; numbers are exchanged
   only after the donor accepts.
 
@@ -77,3 +84,24 @@ Invariants checked by the services:
   rights and exports require the acting admin's password again.
 - Other people's records answer *not found* rather than *forbidden*, to avoid confirming that
   they exist (IDOR protection).
+
+## Platform staff permissions
+
+Defined in `PLATFORM_PERMISSIONS` / `MODERATOR_PERMISSIONS` in `src/server/policy.ts`; staff
+pages use `requirePermission(path, permission)` (404 otherwise) and every service re-checks.
+
+| Permission | Moderator | Admin |
+|---|---|---|
+| staff.panel, overview.view | ✓ | ✓ |
+| donors.review (approve / reject registrations) | ✓ | ✓ |
+| donors.manage (add, correct, deactivate, remove, restore) | ✓ | ✓ |
+| donors.availability (override with a reason) | ✓ | ✓ |
+| verifications.review, reports.handle, duplicates.review, requests.view | ✓ | ✓ |
+| communities.review (approve organisations, affiliation) | – | ✓ |
+| operating_areas.manage, locations.manage, settings.manage | – | ✓ |
+| users.manage (suspend, roles, sessions, reset links), access.review | – | ✓ |
+| audit.view, data.export, deletions.process | – | ✓ |
+
+Staff never act on their own donor record through staff tools (no self-approval or
+self-verification). Every staff action is audit-logged with the actor, previous and new values
+and the reason given.

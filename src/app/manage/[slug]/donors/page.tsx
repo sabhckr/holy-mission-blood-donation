@@ -48,6 +48,7 @@ export default async function ManageDonorsPage({ params, searchParams }: { param
       <h2>{c.donorsTitle}</h2>
       <Alert tone="info">
         <p>{c.donorsIntro}</p>
+        <p>{c.availabilityNote}</p>
         <p>{c.revealLogged}</p>
         <p>{c.notAgreement}</p>
       </Alert>
@@ -116,6 +117,11 @@ export default async function ManageDonorsPage({ params, searchParams }: { param
                     <AvailabilityBadge state={d.availability} t={t} />
                     <VerificationBadge status={d.verificationStatus} t={t} />
                   </div>
+                  {d.availabilitySource === 'staff' && (
+                    <p className="small muted" style={{ margin: 0 }}>
+                      {t.common.availability.sourceStaff}
+                    </p>
+                  )}
                   <p className="small" style={{ margin: 0 }}>
                     {c.donationCounts(n(d.stats.verifiedCount), n(d.stats.reportedCount))}
                     {d.stats.lastDonation && (

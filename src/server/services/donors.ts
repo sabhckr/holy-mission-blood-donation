@@ -18,7 +18,7 @@ import { projectDonor, type DonorConsentsView, type DonorFacts, type DonorView }
 import { estimateNextEligible } from '../domain/eligibility';
 import { nameKey, randomPublicId } from '../domain/ids';
 import { AppError, conflict, forbidden, notFound, validationError } from '../errors';
-import { canVerifyRecord, communityCapabilities, isAdmin, publicViewerLevel, type Actor } from '../policy';
+import { can, canVerifyRecord, communityCapabilities, publicViewerLevel, type Actor } from '../policy';
 import { audit } from './audit';
 import { createAccount, toActor, type ClientMeta, type NewAccount } from './accounts';
 import { validateLocationChain } from './locations';
@@ -56,7 +56,7 @@ export interface DonorRegistrationInput {
   lastDonation: { date: string; type: DonationType } | null;
 }
 
-async function validateProfile(input: DonorProfileInput, executor: Executor): Promise<void> {
+export async function validateDonorProfile(input: DonorProfileInput, executor: Executor): Promise<void> {
   const settings = await getSettings(executor);
   const today = todayInBangladesh();
   const errors: Record<string, string> = {};
@@ -92,20 +92,54 @@ async function insertProfile(executor: Executor, userId: string, profile: DonorP
   return donor;
 }
 
-async function recordAvailability(executor: Executor, donorId: string, status: 'available' | 'unavailable', expiryDays: number, note: string | null = null) {
+/**
+ * Records an availability statement in the history table and updates the profile's current
+ * value. `by` distinguishes the donor's own statement from a staff override (which must carry
+ * a reason); 'unknown' clears the current value.
+ */
+export async function recordAvailability(
+  executor: Executor,
+  donorId: string,
+  status: 'available' | 'unavailable' | 'unknown',
+  expiryDays: number,
+  options: { note?: string | null; by?: { source: 'donor' | 'staff'; userId: string | null; reason?: string | null } } = {},
+) {
+  const [current] = await executor
+    .select({ status: donorProfiles.availabilityStatus, expiresAt: donorProfiles.availabilityExpiresAt })
+    .from(donorProfiles)
+    .where(eq(donorProfiles.id, donorId));
+  const previous = !current?.status ? 'unknown' : current.status === 'available' && current.expiresAt && current.expiresAt <= new Date() ? 'unknown' : current.status;
   const confirmedAt = new Date();
   const expiresAt = status === 'available' ? availabilityExpiry(confirmedAt, expiryDays) : null;
-  await executor.insert(availabilityUpdates).values({ donorId, status, confirmedAt, expiresAt, note });
+  const source = options.by?.source ?? 'donor';
+  await executor.insert(availabilityUpdates).values({
+    donorId,
+    status,
+    confirmedAt,
+    expiresAt,
+    note: options.note ?? null,
+    source,
+    setByUserId: options.by?.userId ?? null,
+    previousStatus: previous,
+    reason: options.by?.reason ?? null,
+  });
   await executor
     .update(donorProfiles)
-    .set({ availabilityStatus: status, availabilityConfirmedAt: confirmedAt, availabilityExpiresAt: expiresAt, updatedAt: new Date() })
+    .set({
+      availabilityStatus: status === 'unknown' ? null : status,
+      availabilityConfirmedAt: status === 'unknown' ? null : confirmedAt,
+      availabilityExpiresAt: expiresAt,
+      availabilitySource: status === 'unknown' ? null : source,
+      updatedAt: new Date(),
+    })
     .where(eq(donorProfiles.id, donorId));
+  return { previous };
 }
 
 /** New account + donor profile + consents in one transaction. */
 export async function registerDonor(input: DonorRegistrationInput, meta: ClientMeta = {}) {
   return db.transaction(async (tx) => {
-    await validateProfile(input.profile, tx);
+    await validateDonorProfile(input.profile, tx);
     if (input.lastDonation) {
       const today = todayInBangladesh();
       if (compareDates(input.lastDonation.date, today) > 0) throw validationError({ lastDonationDate: 'futureDate' });
@@ -140,7 +174,7 @@ export async function createDonorProfile(actor: Actor, profile: DonorProfileInpu
   if (actor.status !== 'active') throw forbidden();
   if (actor.donorId) throw conflict('donor_profile_exists');
   return db.transaction(async (tx) => {
-    await validateProfile(profile, tx);
+    await validateDonorProfile(profile, tx);
     let donor;
     try {
       donor = await insertProfile(tx, actor.userId, profile, consents);
@@ -171,13 +205,16 @@ export async function updateDonorProfile(actor: Actor, input: DonorProfileInput,
   if (actor.status !== 'active') throw forbidden();
   return db.transaction(async (tx) => {
     const current = await requireOwnDonor(actor, tx);
-    await validateProfile(input, tx);
+    await validateDonorProfile(input, tx);
     const identityChanged =
       current.fullName !== input.fullName || current.dateOfBirth !== input.dateOfBirth || current.bloodGroup !== input.bloodGroup;
     const resetVerification = identityChanged && current.verificationStatus !== 'unverified';
+    // A rejected registration goes back to the review queue once the donor corrects it.
+    const resubmitted = current.registrationStatus === 'rejected';
     await tx
       .update(donorProfiles)
       .set({
+        ...(resubmitted ? { registrationStatus: 'pending' as const, registrationReviewedAt: null, registrationReviewedByUserId: null } : {}),
         fullName: input.fullName,
         nameKey: nameKey(input.fullName),
         dateOfBirth: input.dateOfBirth,
@@ -213,8 +250,8 @@ export async function updateDonorProfile(actor: Actor, input: DonorProfileInput,
     )
       .filter(([, c]) => c)
       .map(([k]) => k);
-    await audit(tx, { actor, action: 'donor.profile_updated', targetType: 'donor', targetId: current.id, metadata: { changed, verificationReset: resetVerification }, ipHash: meta.ipHash });
-    return { verificationReset: resetVerification };
+    await audit(tx, { actor, action: 'donor.profile_updated', targetType: 'donor', targetId: current.id, metadata: { changed, verificationReset: resetVerification, resubmitted }, ipHash: meta.ipHash });
+    return { verificationReset: resetVerification, resubmitted };
   });
 }
 
@@ -241,9 +278,9 @@ export async function setAvailability(actor: Actor, status: 'available' | 'unava
   if (actor.status !== 'active') throw forbidden();
   return db.transaction(async (tx) => {
     const donor = await requireOwnDonor(actor, tx);
-    if (donor.status === 'restricted') throw forbidden();
+    if (donor.status === 'restricted' || donor.status === 'removed') throw forbidden();
     const settings = await getSettings(tx);
-    await recordAvailability(tx, donor.id, status, settings.availabilityExpiryDays, note);
+    await recordAvailability(tx, donor.id, status, settings.availabilityExpiryDays, { note, by: { source: 'donor', userId: actor.userId } });
     await audit(tx, { actor, action: 'donor.availability_set', targetType: 'donor', targetId: donor.id, metadata: { status }, ipHash: meta.ipHash });
   });
 }
@@ -253,7 +290,8 @@ export async function setDonorListingPaused(actor: Actor, paused: boolean, meta:
   if (actor.status !== 'active') throw forbidden();
   return db.transaction(async (tx) => {
     const donor = await requireOwnDonor(actor, tx);
-    if (donor.status === 'restricted') throw forbidden();
+    // Staff decisions (deactivated or removed) cannot be undone by the donor.
+    if (donor.status === 'restricted' || donor.status === 'removed') throw forbidden();
     await tx.update(donorProfiles).set({ status: paused ? 'paused' : 'active', updatedAt: new Date() }).where(eq(donorProfiles.id, donor.id));
     await audit(tx, { actor, action: paused ? 'donor.paused' : 'donor.resumed', targetType: 'donor', targetId: donor.id, ipHash: meta.ipHash });
   });
@@ -278,6 +316,28 @@ function consentsView(c: ConsentRow): DonorConsentsView {
     allowContactRequests: c.allowContactRequests,
   };
 }
+
+/**
+ * The single definition of "publicly listed": the donor consented to be listed, staff approved
+ * the registration, the listing is active and the account is active. Search, public profiles,
+ * number reveals, counts and contact requests all use it.
+ */
+export function publiclyListedConditions(): SQL[] {
+  return [
+    eq(donorConsents.listedInSearch, true),
+    eq(donorProfiles.registrationStatus, 'approved'),
+    eq(donorProfiles.status, 'active'),
+    eq(users.status, 'active'),
+  ];
+}
+
+export function isPubliclyListed(row: { donor: Pick<DonorRow, 'status' | 'registrationStatus'>; consent: Pick<ConsentRow, 'listedInSearch'>; accountStatus: string }): boolean {
+  return row.consent.listedInSearch && row.donor.registrationStatus === 'approved' && row.donor.status === 'active' && row.accountStatus === 'active';
+}
+
+/** Currently marked available (and not expired). */
+export const availableNowCondition = () =>
+  sql`${donorProfiles.availabilityStatus} = 'available' and ${donorProfiles.availabilityExpiresAt} > now()`;
 
 export function donorAvailability(donor: Pick<DonorRow, 'status' | 'availabilityStatus' | 'availabilityExpiresAt'>, accountStatus: typeof users.$inferSelect.status, now = new Date()): AvailabilityState {
   return availabilityState(
@@ -329,6 +389,7 @@ function toFacts(row: DonorRow, consent: ConsentRow, accountStatus: typeof users
     verificationStatus: row.verificationStatus,
     availability: donorAvailability(row, accountStatus),
     availabilityConfirmedAt: row.availabilityConfirmedAt,
+    availabilitySource: row.availabilitySource,
     consents: consentsView(consent),
     ...extras,
   };
@@ -348,8 +409,7 @@ export async function getPublicDonorProfile(publicId: string, actor: Actor | nul
     .where(eq(donorProfiles.publicId, publicId));
   if (!row) return null;
   const viewer = publicViewerLevel(actor, row.donor.userId);
-  const visible = row.consent.listedInSearch && row.donor.status === 'active' && row.accountStatus === 'active';
-  if (!visible && viewer !== 'owner' && !isAdmin(actor)) return null;
+  if (!isPubliclyListed(row) && viewer !== 'owner' && !can(actor, 'donors.manage')) return null;
   const stats = (await donationStatsFor([row.donor.id])).get(row.donor.id) ?? { verifiedCount: 0, reportedCount: 0, lastDonation: null };
   const comms = (await communitiesFor([row.donor.userId])).get(row.donor.userId) ?? [];
   return projectDonor(toFacts(row.donor, row.consent, row.accountStatus, { stats, communities: comms }), viewer);
@@ -361,7 +421,6 @@ export interface DonorSearchFilters {
   districtId?: number | null;
   upazilaId?: number | null;
   locality?: string | null;
-  availableOnly?: boolean;
   verifiedOnly?: boolean;
   sort?: 'best' | 'recent' | 'newest';
   page?: number;
@@ -378,17 +437,14 @@ const visibleTo = (column: SQL | typeof donorConsents.localityVisibility, signed
   signedIn ? sql`${column} in ('public', 'signed_in')` : sql`${column} = 'public'`;
 
 /**
- * Donor search. Only donors who consented to be listed, with active accounts and profiles.
+ * Public donor search: only publicly listed donors (consented, approved, active) who are
+ * currently marked available. Donors whose availability is unknown or "not now" are left out.
  * Filtering by locality only matches donors whose locality is visible to this viewer, so the
  * filter cannot be used to discover hidden information.
  */
 export async function searchDonors(filters: DonorSearchFilters, actor: Actor | null): Promise<DonorSearchResult> {
   const signedIn = !!actor && actor.status === 'active';
-  const conditions: SQL[] = [
-    eq(donorConsents.listedInSearch, true),
-    eq(donorProfiles.status, 'active'),
-    eq(users.status, 'active'),
-  ];
+  const conditions: SQL[] = [...publiclyListedConditions(), availableNowCondition()];
   if (filters.bloodGroup) conditions.push(eq(donorProfiles.bloodGroup, filters.bloodGroup));
   if (filters.divisionId) conditions.push(eq(donorProfiles.divisionId, filters.divisionId));
   if (filters.districtId) conditions.push(eq(donorProfiles.districtId, filters.districtId));
@@ -398,20 +454,15 @@ export async function searchDonors(filters: DonorSearchFilters, actor: Actor | n
     conditions.push(sql`${donorProfiles.locality} ilike ${pattern}`);
     conditions.push(visibleTo(donorConsents.localityVisibility, signedIn));
   }
-  if (filters.availableOnly) {
-    conditions.push(eq(donorProfiles.availabilityStatus, 'available'));
-    conditions.push(sql`${donorProfiles.availabilityExpiresAt} > now()`);
-  }
   if (filters.verifiedOnly) conditions.push(eq(donorProfiles.verificationStatus, 'verified'));
   const where = and(...conditions);
-  const availableFirst = sql`case when ${donorProfiles.availabilityStatus} = 'available' and ${donorProfiles.availabilityExpiresAt} > now() then 0 else 1 end`;
   const verifiedFirst = sql`case when ${donorProfiles.verificationStatus} = 'verified' then 0 else 1 end`;
   const orderBy =
     filters.sort === 'newest'
       ? [desc(donorProfiles.createdAt)]
       : filters.sort === 'recent'
         ? [sql`${donorProfiles.availabilityConfirmedAt} desc nulls last`, desc(donorProfiles.createdAt)]
-        : [availableFirst, verifiedFirst, sql`${donorProfiles.availabilityConfirmedAt} desc nulls last`, desc(donorProfiles.createdAt)];
+        : [verifiedFirst, sql`${donorProfiles.availabilityConfirmedAt} desc nulls last`, desc(donorProfiles.createdAt)];
 
   const [{ total }] = await db
     .select({ total: sql<number>`count(*)::int` })
@@ -437,14 +488,14 @@ export async function searchDonors(filters: DonorSearchFilters, actor: Actor | n
   return { items, total, page, pageCount };
 }
 
-/** Count of listed, currently available donors per blood group in an area (for the no-donor fallback). */
+/** Count of publicly listed donors (optionally only those available now) in an area, for the no-donor fallback. */
 export async function countListedDonors(filters: Pick<DonorSearchFilters, 'bloodGroup' | 'divisionId' | 'districtId' | 'upazilaId'> & { availableOnly?: boolean }): Promise<number> {
-  const conditions: SQL[] = [eq(donorConsents.listedInSearch, true), eq(donorProfiles.status, 'active'), eq(users.status, 'active')];
+  const conditions: SQL[] = publiclyListedConditions();
   if (filters.bloodGroup) conditions.push(eq(donorProfiles.bloodGroup, filters.bloodGroup));
   if (filters.divisionId) conditions.push(eq(donorProfiles.divisionId, filters.divisionId));
   if (filters.districtId) conditions.push(eq(donorProfiles.districtId, filters.districtId));
   if (filters.upazilaId) conditions.push(eq(donorProfiles.upazilaId, filters.upazilaId));
-  if (filters.availableOnly) conditions.push(sql`${donorProfiles.availabilityStatus} = 'available' and ${donorProfiles.availabilityExpiresAt} > now()`);
+  if (filters.availableOnly) conditions.push(availableNowCondition());
   const [{ n }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(donorProfiles)
@@ -467,7 +518,7 @@ export async function revealDonorPhone(actor: Actor, publicId: string, meta: Cli
     .innerJoin(users, eq(users.id, donorProfiles.userId))
     .where(eq(donorProfiles.publicId, publicId));
   if (!row) throw notFound();
-  const listed = row.consent.listedInSearch && row.donor.status === 'active' && row.accountStatus === 'active';
+  const listed = isPubliclyListed(row);
   const view = projectDonor(toFacts(row.donor, row.consent, row.accountStatus), publicViewerLevel(actor, row.donor.userId));
   if (view.phoneAccess === 'owner') return { phone: row.donor.contactPhone, method: row.donor.preferredContactMethod };
   if (!listed || view.phoneAccess !== 'reveal') throw forbidden();
@@ -568,7 +619,7 @@ export async function reviewProfileVerification(actor: Actor, donorId: string, d
     }
     if (actor.userId === donor.userId) throw new AppError('forbidden', 'self_verification');
     if (!canVerifyRecord(actor, { donorUserId: donor.userId, reviewerCapabilities: caps, donorIsActiveMember })) throw forbidden();
-    if (!isAdmin(actor) && donor.verificationStatus !== 'pending') throw new AppError('invalid_state');
+    if (!can(actor, 'verifications.review') && donor.verificationStatus !== 'pending') throw new AppError('invalid_state');
     await tx
       .update(donorProfiles)
       .set({

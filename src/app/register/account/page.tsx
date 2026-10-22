@@ -5,6 +5,7 @@ import { getI18n } from '@/i18n/server';
 import { getActor, safeNextPath } from '@/server/auth/current';
 import { registerAccountAction } from '../../_actions/auth';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
+import { clientValidationMessages } from '@/components/form/client-messages';
 import { CheckboxField, TextField } from '@/components/form/fields';
 import { PageHeader } from '@/components/ui';
 
@@ -23,7 +24,7 @@ export default async function RegisterAccountPage({ searchParams }: { searchPara
       <PageHeader title={t.auth.accountTitle} intro={t.auth.accountIntro} />
       <div className="container container-narrow section stack">
         <div className="card">
-          <ActionForm action={registerAccountAction}>
+          <ActionForm action={registerAccountAction} clientMessages={clientValidationMessages(t)}>
             <input type="hidden" name="next" value={next} />
             <TextField name="displayName" label={t.auth.displayName} autoComplete="name" required maxLength={80} />
             <TextField name="phone" label={t.auth.phone} hint={t.auth.phoneHint} type="tel" inputMode="tel" autoComplete="tel" required maxLength={20} />

@@ -104,6 +104,20 @@ export default async function ProfilePage() {
       <h1>{p.title}</h1>
       <p>{p.intro}</p>
 
+      {donor.registrationStatus === 'rejected' && (
+        <Alert tone="warning" title={t.account.dashboard.registrationRejectedTitle}>
+          <p>{donor.registrationNote ? t.account.dashboard.registrationReason(donor.registrationNote) : t.account.dashboard.registrationNoReason}</p>
+          <p style={{ margin: 0 }}>
+            <a href="#donor-title">{p.rejectedHowToFix}</a>
+          </p>
+        </Alert>
+      )}
+      {donor.registrationStatus === 'pending' && (
+        <Alert tone="info" title={`${t.account.dashboard.registrationLabel}: ${t.common.registrationStatus.pending}`}>
+          <p style={{ margin: 0 }}>{p.pendingNote}</p>
+        </Alert>
+      )}
+
       <section className="card stack" aria-labelledby="verification-title">
         <h2 id="verification-title" style={{ fontSize: '1.15rem' }}>
           {p.verificationTitle}

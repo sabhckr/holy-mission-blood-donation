@@ -2,6 +2,7 @@
 
 import { ActionForm, SubmitButton } from './form/ActionForm';
 import { SelectField, TextArea, type Option } from './form/fields';
+import type { ClientValidationMessages } from './form/client-messages';
 import { reportAction } from '@/app/_actions/shared';
 
 export function ReportForm({
@@ -9,16 +10,18 @@ export function ReportForm({
   targetId,
   labels,
   reasons,
+  clientMessages,
 }: {
   targetType: 'donor' | 'community' | 'request' | 'user';
   targetId: string;
   labels: { title: string; reason: string; details: string; detailsHint: string; submit: string; submitting: string; choose: string };
   reasons: Option[];
+  clientMessages?: ClientValidationMessages;
 }) {
   return (
     <details className="disclosure">
       <summary>{labels.title}</summary>
-      <ActionForm action={reportAction}>
+      <ActionForm action={reportAction} clientMessages={clientMessages}>
         <input type="hidden" name="targetType" value={targetType} />
         <input type="hidden" name="targetId" value={targetId} />
         <SelectField name="reason" label={labels.reason} options={reasons} placeholder={labels.choose} required />

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getI18n } from '@/i18n/server';
-import { requireAdmin } from '@/server/auth/current';
+import { requirePermission } from '@/server/auth/current';
 import { childrenOf, getLocation } from '@/server/services/locations';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
 import { CheckboxField, TextField } from '@/components/form/fields';
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const CHILD_LEVEL = { division: 'district', district: 'upazila' } as const;
 
 export default async function AdminLocationsPage({ searchParams }: { searchParams: Promise<{ parent?: string }> }) {
-  await requireAdmin('/admin/locations');
+  await requirePermission('/admin/locations', 'locations.manage');
   const { t, locale } = await getI18n();
   const raw = (await searchParams).parent;
   const parentId = raw && /^\d{1,9}$/.test(raw) ? Number(raw) : null;

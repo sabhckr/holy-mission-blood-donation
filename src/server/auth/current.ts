@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { getActorBySessionToken } from '../services/accounts';
-import { isAdmin, type Actor } from '../policy';
+import { can, isAdmin, type Actor, type PlatformPermission } from '../policy';
 
 export const SESSION_COOKIE = 'hm_session';
 
@@ -40,6 +40,13 @@ export async function requireActor(nextPath: string, options: { allowDeactivated
 export async function requireAdmin(nextPath: string): Promise<Actor> {
   const actor = await requireActor(nextPath);
   if (!isAdmin(actor)) notFound();
+  return actor;
+}
+
+/** Staff pages: 404 unless the signed-in user has this platform permission. */
+export async function requirePermission(nextPath: string, permission: PlatformPermission): Promise<Actor> {
+  const actor = await requireActor(nextPath);
+  if (!can(actor, permission)) notFound();
   return actor;
 }
 

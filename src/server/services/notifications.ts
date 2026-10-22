@@ -25,10 +25,23 @@ export type NotificationKind =
   | 'request_response'
   | 'request_status_changed'
   | 'availability_expiring'
-  | 'deletion_completed';
+  | 'deletion_completed'
+  | 'registration_approved'
+  | 'registration_rejected'
+  | 'availability_changed_by_staff'
+  | 'listing_changed_by_staff'
+  | 'profile_changed_by_staff';
 
 /** Kinds worth sending outside the app (SMS/email) when a provider is configured. */
-const EXTERNAL_KINDS = new Set<NotificationKind>(['contact_request_received', 'contact_request_accepted', 'request_assigned', 'request_escalated', 'request_response']);
+const EXTERNAL_KINDS = new Set<NotificationKind>([
+  'contact_request_received',
+  'contact_request_accepted',
+  'request_assigned',
+  'request_escalated',
+  'request_response',
+  'registration_approved',
+  'availability_changed_by_staff',
+]);
 
 export interface NewNotification {
   userId: string;

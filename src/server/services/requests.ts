@@ -14,7 +14,7 @@ import {
 import { PAGE_SIZE, type BloodGroup, type RequestContactPreference, type RequestStatus, type Urgency } from '../domain/constants';
 import { randomPublicId, randomToken, sha256 } from '../domain/ids';
 import { AppError, forbidden, isUniqueViolation, notFound, validationError } from '../errors';
-import { communityCapabilities, isAdmin, type Actor } from '../policy';
+import { can, communityCapabilities, isAdmin, type Actor } from '../policy';
 import type { ClientMeta } from './accounts';
 import { audit } from './audit';
 import { communitiesServingArea, serviceAreaLocationIds } from './communities';
@@ -295,7 +295,8 @@ export async function respondToRequest(actor: Actor, publicId: string, message: 
     if (!OPEN_STATUSES.includes(effectiveStatus(request))) throw new AppError('invalid_state');
     if (request.createdByUserId === actor.userId) throw forbidden();
     const [donor] = await tx.select().from(donorProfiles).where(eq(donorProfiles.id, actor.donorId!));
-    if (!donor || donor.status !== 'active') throw forbidden();
+    // Only approved, listed donors can offer to help; pending or hidden profiles stay private.
+    if (!donor || donor.status !== 'active' || donor.registrationStatus !== 'approved') throw forbidden();
     const [existing] = await tx.select().from(requestResponses).where(and(eq(requestResponses.requestId, request.id), eq(requestResponses.donorId, donor.id)));
     if (existing && existing.status !== 'withdrawn') throw new AppError('conflict', 'duplicate');
     if (existing) await tx.update(requestResponses).set({ status: 'offered', message, updatedAt: new Date() }).where(eq(requestResponses.id, existing.id));
@@ -506,7 +507,7 @@ export async function communityRequestQueue(
 
 /** Admin oversight list with filters. */
 export async function adminListRequests(actor: Actor, filters: { status?: RequestStatus | null; bloodGroup?: BloodGroup | null; districtId?: number | null; page?: number }) {
-  if (!isAdmin(actor)) throw forbidden();
+  if (!can(actor, 'requests.view')) throw forbidden();
   const conditions: SQL[] = [];
   if (filters.status) conditions.push(eq(bloodRequests.status, filters.status));
   if (filters.bloodGroup) conditions.push(eq(bloodRequests.bloodGroup, filters.bloodGroup));

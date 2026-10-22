@@ -150,8 +150,10 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
     try {
       const result = await updateDonorProfile(actor, pickProfile(parsed.data), await getRequestMeta());
       refresh();
-      const { t } = await getI18n();
-      return success(result.verificationReset ? t.account.profile.savedVerificationReset : t.account.profile.saved);
+      const p = (await getI18n()).t.account.profile;
+      // A rejected registration goes back to review when the donor saves corrections.
+      if (result.resubmitted) return success(result.verificationReset ? `${p.savedResubmitted} ${p.verificationResetExtra}` : p.savedResubmitted);
+      return success(result.verificationReset ? p.savedVerificationReset : p.saved);
     } catch (error) {
       return failure(error, keepValues(raw));
     }
