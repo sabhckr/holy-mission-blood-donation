@@ -27,6 +27,7 @@ Optional variables:
 
 | Variable | Why |
 |---|---|
+| `DATABASE_PASSWORD` | The raw database password. Use it to keep `DATABASE_URL` with the `[YOUR-PASSWORD]` placeholder as Supabase shows it: no URL-encoding needed. |
 | `APP_SECRET` | 32+ random characters for hashing IP addresses. Without it, a key is derived from `DATABASE_URL` (changing the DB password then resets rate-limit counters). |
 | `CRON_SECRET` | Enables the daily maintenance job (`/api/cron/maintenance`, 03:00 Bangladesh time). Not required: overdue requests are already shown as expired. |
 | `APP_BASE_URL` | Only for a custom domain; otherwise the Vercel production domain is used. |

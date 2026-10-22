@@ -40,3 +40,18 @@ describe('integration-provided connection strings', () => {
     expect(databaseOptions('postgres://u:p@ep-x-pooler.ap-southeast-1.aws.neon.tech/db?sslmode=require').prepare).toBe(false);
   });
 });
+
+describe('separate database password', () => {
+  it('fills DATABASE_PASSWORD into a placeholder URL, encoding special characters', async () => {
+    const { databaseUrl } = await import('@/server/config');
+    vi.stubEnv('DATABASE_URL', 'postgresql://postgres.ref:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres');
+    vi.stubEnv('DATABASE_PASSWORD', 'p@ss:w/rd#1%');
+    vi.stubEnv('MIGRATION_DATABASE_URL', '');
+    vi.stubEnv('DATABASE_URL_UNPOOLED', '');
+    vi.stubEnv('POSTGRES_URL_NON_POOLING', '');
+    const url = new URL(databaseUrl()!);
+    expect(decodeURIComponent(url.password)).toBe('p@ss:w/rd#1%');
+    expect(url.hostname).toBe('aws-0-ap-southeast-1.pooler.supabase.com');
+    expect(new URL(migrationDatabaseUrl()!).password).toBe(url.password);
+  });
+});

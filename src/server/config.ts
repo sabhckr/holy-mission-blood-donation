@@ -26,9 +26,16 @@ export function databaseUrl(): string | undefined {
   return raw ? cleanUrl(raw) : undefined;
 }
 
+/**
+ * Drops non-standard query parameters and, when DATABASE_PASSWORD is set, puts that password
+ * into the URL (percent-encoded). This lets hosting dashboards keep the URL with a
+ * [YOUR-PASSWORD] placeholder and the raw password in its own field.
+ */
 function cleanUrl(raw: string): string {
   const url = new URL(raw);
   for (const key of [...url.searchParams.keys()]) if (key !== 'sslmode') url.searchParams.delete(key);
+  const password = process.env.DATABASE_PASSWORD;
+  if (password) url.password = encodeURIComponent(password);
   return url.toString();
 }
 
