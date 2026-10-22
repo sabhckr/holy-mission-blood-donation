@@ -26,3 +26,17 @@ describe('deployment configuration', () => {
     expect(appBaseUrl()).toBe('https://example.org');
   });
 });
+
+describe('integration-provided connection strings', () => {
+  it('accepts POSTGRES_URL / POSTGRES_URL_NON_POOLING and strips non-standard parameters', async () => {
+    const { databaseUrl } = await import('@/server/config');
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('MIGRATION_DATABASE_URL', '');
+    vi.stubEnv('DATABASE_URL_UNPOOLED', '');
+    vi.stubEnv('POSTGRES_URL', 'postgres://u:p@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&supa=base-pooler.x');
+    vi.stubEnv('POSTGRES_URL_NON_POOLING', 'postgres://u:p@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require');
+    expect(databaseUrl()).toBe('postgres://u:p@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require');
+    expect(migrationDatabaseUrl()).toBe('postgres://u:p@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require');
+    expect(databaseOptions('postgres://u:p@ep-x-pooler.ap-southeast-1.aws.neon.tech/db?sslmode=require').prepare).toBe(false);
+  });
+});

@@ -25,7 +25,7 @@ function appSecret(): string {
   if (process.env.NODE_ENV === 'production') {
     // Without APP_SECRET, derive a stable key from the (secret) database URL so a deployment
     // needs only DATABASE_URL. Setting APP_SECRET is still preferred.
-    const db = process.env.DATABASE_URL;
+    const db = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     if (!db) throw new Error('APP_SECRET (32+ characters) or DATABASE_URL must be set in production');
     return createHash('sha256').update(`holy-mission-app-secret:${db}`).digest('hex');
   }

@@ -1,7 +1,7 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
-import { databaseOptions } from '../config';
+import { databaseOptions, databaseUrl } from '../config';
 
 export type Database = PostgresJsDatabase<typeof schema>;
 export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -12,7 +12,7 @@ type Holder = { db: Database; client: postgres.Sql; url: string };
 const globalRef = globalThis as unknown as { __holyMissionDb?: Holder };
 
 function connect(): Holder {
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (!url) throw new Error('DATABASE_URL is not set. Copy .env.example to .env.local.');
   const client = postgres(url, {
     ...databaseOptions(url),
@@ -25,7 +25,7 @@ function connect(): Holder {
 
 /** Lazily created pool, reused across hot reloads in development. */
 export function getDb(): Database {
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (!globalRef.__holyMissionDb || globalRef.__holyMissionDb.url !== url) {
     globalRef.__holyMissionDb = connect();
   }
