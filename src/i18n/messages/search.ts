@@ -46,7 +46,6 @@ export const search = defineMessages({
     fallbackHospital: 'হাসপাতালের ব্লাড ব্যাংক বা কাছের লাইসেন্সপ্রাপ্ত ব্লাড ব্যাংকেও খোঁজ নিন।',
     contactCommunity: 'যোগাযোগ করুন',
     rateLimited: 'অল্প সময়ে অনেকবার খুঁজেছেন। একটু পরে আবার চেষ্টা করুন।',
-    privacyNote: 'রক্তদাতা যতটুকু অনুমতি দিয়েছেন, ততটুকুই দেখানো হয়। নম্বর দেখতে লগ ইন করতে হবে। কেউ নম্বর দেখলে প্রতিবার তা রেকর্ড থাকে।',
   },
   en: {
     title: 'Find donors',
@@ -93,6 +92,5 @@ export const search = defineMessages({
     fallbackHospital: 'Also check with the hospital blood bank or the nearest licensed blood bank.',
     contactCommunity: 'Contact the organisation',
     rateLimited: 'Too many searches in a short time. Please try again in a little while.',
-    privacyNote: 'Information is shown according to each donor’s permission. You must sign in to see a number, and every view is recorded.',
   },
 });
