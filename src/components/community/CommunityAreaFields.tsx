@@ -1,5 +1,6 @@
 'use client';
 
+import { MapPin } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useFormContext } from '../form/ActionForm';
 import type { CompactLocation } from '../form/LocationPicker';
@@ -118,11 +119,11 @@ function CommunityAreaFieldsInner({
       <div className="stack">
         <input type="hidden" name="divisionId" value={fixedDivision[0]} />
         <input type="hidden" name="districtId" value={fixedDistrict[0]} />
-        <div className="field">
-          <span className="label">{labels.hqDistrict}</span>
-          <p className="fixed-place">{fixedDistrict[2]}</p>
-          {placeError && <p className="error-text">{placeError}</p>}
-        </div>
+        <p className="fixed-district">
+          <MapPin size={15} aria-hidden="true" />
+          {`${labels.hqDistrict}: ${fixedDistrict[2]}`}
+        </p>
+        {placeError && <p className="error-text">{placeError}</p>}
         <fieldset className="choice-group" aria-describedby={`${id}-areas-hint${areaError ? ` ${id}-areas-error` : ''}`} aria-invalid={areaError ? true : undefined}>
           <legend>{labels.serviceAreasLegend}</legend>
           <p className="hint" id={`${id}-areas-hint`}>

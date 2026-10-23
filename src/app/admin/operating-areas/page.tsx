@@ -146,10 +146,10 @@ export default async function AdminOperatingAreasPage() {
           <p className="hint">{o.addIntro}</p>
           <LocationPicker locations={locs} labels={locationLabels(t)} />
           <TextArea name="publicNote" label={o.publicNote} hint={o.publicNoteHint} maxLength={300} rows={2} />
+          <div className="form-actions">
+            <SubmitButton label={o.add} pendingLabel={t.common.actions.saving} />
+          </div>
         </fieldset>
-        <div className="form-actions">
-          <SubmitButton label={o.add} pendingLabel={t.common.actions.saving} />
-        </div>
       </ActionForm>
     </>
   );

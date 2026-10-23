@@ -106,10 +106,10 @@ export default async function AdminLocationsPage({ searchParams }: { searchParam
             <TextField name="nameBn" label={l.nameBn} required maxLength={80} />
             <TextField name="nameEn" label={l.nameEn} required maxLength={80} />
           </div>
+          <div className="form-actions">
+            <SubmitButton label={l.add} pendingLabel={t.common.actions.saving} />
+          </div>
         </fieldset>
-        <div className="form-actions">
-          <SubmitButton label={l.add} pendingLabel={t.common.actions.saving} />
-        </div>
       </ActionForm>
     </>
   );

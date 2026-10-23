@@ -260,7 +260,7 @@ export async function getRequestForViewer(publicId: string, actor: Actor | null,
   };
 }
 
-export async function listPublicRequests(filters: { bloodGroup?: BloodGroup | null; divisionId?: number | null; districtId?: number | null; page?: number }) {
+export async function listPublicRequests(filters: { bloodGroup?: BloodGroup | null; divisionId?: number | null; districtId?: number | null; upazilaId?: number | null; page?: number }) {
   const conditions: SQL[] = [
     inArray(bloodRequests.status, OPEN_STATUSES),
     eq(bloodRequests.showOnPublicBoard, true),
@@ -270,6 +270,7 @@ export async function listPublicRequests(filters: { bloodGroup?: BloodGroup | nu
   if (filters.bloodGroup) conditions.push(eq(bloodRequests.bloodGroup, filters.bloodGroup));
   if (filters.divisionId) conditions.push(eq(bloodRequests.divisionId, filters.divisionId));
   if (filters.districtId) conditions.push(eq(bloodRequests.districtId, filters.districtId));
+  if (filters.upazilaId) conditions.push(eq(bloodRequests.upazilaId, filters.upazilaId));
   const where = and(...conditions);
   const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(bloodRequests).where(where);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));

@@ -17,13 +17,14 @@ export function RequestFilters({
   locations: CompactLocation[];
   bloodGroups: string[];
   labels: { bloodGroup: string; anyGroup: string; search: string; location: LocationLabels; area?: string; groupNav?: string };
-  defaults: { bloodGroup?: string | null; divisionId?: number | null; districtId?: number | null };
+  defaults: { bloodGroup?: string | null; divisionId?: number | null; districtId?: number | null; upazilaId?: number | null };
 }) {
   const href = (group: string | null) => {
     const sp = new URLSearchParams();
     if (group) sp.set('group', group);
     if (defaults.divisionId) sp.set('division', String(defaults.divisionId));
     if (defaults.districtId) sp.set('district', String(defaults.districtId));
+    if (defaults.upazilaId) sp.set('upazila', String(defaults.upazilaId));
     const qs = sp.toString();
     return qs ? `/requests?${qs}` : '/requests';
   };
@@ -56,7 +57,6 @@ export function RequestFilters({
             labels={labels.location}
             defaults={defaults}
             anyOption
-            showUpazila={false}
             required={{ division: false, district: false, upazila: false }}
             names={{ division: 'division', district: 'district', upazila: 'upazila' }}
           />

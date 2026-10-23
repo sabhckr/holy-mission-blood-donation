@@ -1,7 +1,7 @@
 'use client';
 
 import { MapPin } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { useFormContext } from './ActionForm';
 import { RequiredWord } from './fields';
 
@@ -71,10 +71,12 @@ function LocationPickerInner({
     onChange: (v: number | null) => void,
     placeholder: string,
     disabled = false,
+    note?: { text: ReactNode; error?: string },
   ) => {
     const name = names[level];
-    const error = err(name);
+    const error = err(name) ?? note?.error;
     const fieldId = `${id}-${level}`;
+    const describedBy = [note ? `${fieldId}-note` : '', error ? `${fieldId}-error` : ''].filter(Boolean).join(' ') || undefined;
     const label = (
       <label className="label" htmlFor={fieldId}>
         {labels[level]}
@@ -95,6 +97,11 @@ function LocationPickerInner({
         ) : (
           label
         )}
+        {note && (
+          <p className="fixed-district" id={`${fieldId}-note`}>
+            {note.text}
+          </p>
+        )}
         <select
           id={fieldId}
           className="select"
@@ -104,7 +111,7 @@ function LocationPickerInner({
           aria-required={required[level]}
           data-required-key={required[level] ? 'invalidLocation' : undefined}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${fieldId}-error` : undefined}
+          aria-describedby={describedBy}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
         >
           <option value="">{anyOption ? labels.any : placeholder}</option>
@@ -130,23 +137,24 @@ function LocationPickerInner({
     const [fixedDivision, fixedDistrict] = [divisions[0], allDistricts[0]];
     const fixedUpazilas = locations.filter((l) => l[3] === 2 && l[1] === fixedDistrict[0]);
     const placeError = err(names.district) ?? err(names.division);
-    return (
-      <div className="field-row">
+    const hidden = (
+      <>
         <input type="hidden" name={names.division} value={fixedDivision[0]} />
         <input type="hidden" name={names.district} value={fixedDistrict[0]} />
-        <div className="field">
-          <span className="label">{labels.district}</span>
-          <p className="fixed-place" aria-describedby={placeError ? `${id}-district-error` : undefined}>
-            <MapPin size={18} aria-hidden="true" />
-            {fixedDistrict[2]}
-          </p>
-          {placeError && (
-            <p className="error-text" id={`${id}-district-error`}>
-              {placeError}
-            </p>
-          )}
-        </div>
-        {showUpazila && select('upazila', upazila, fixedUpazilas, setUpazila, labels.chooseUpazila)}
+      </>
+    );
+    // Filters without an upazila choice have nothing left to pick: the district is sent as is.
+    if (!showUpazila) return hidden;
+    const note = (
+      <>
+        <MapPin size={15} aria-hidden="true" />
+        {`${labels.district}: ${fixedDistrict[2]}`}
+      </>
+    );
+    return (
+      <div className="fixed-area">
+        {hidden}
+        {select('upazila', upazila, fixedUpazilas, setUpazila, labels.chooseUpazila, false, { text: note, error: placeError })}
       </div>
     );
   }

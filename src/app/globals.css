@@ -216,6 +216,12 @@ strong {
   margin-top: var(--space-6);
 }
 
+/* Hidden form fields (including the ones Next.js adds to server-action forms) add no space before
+   the first visible item of a stack. */
+:is(.stack, .stack-sm, .stack-lg) > :not(input[type='hidden']):not(:not(input[type='hidden']) ~ *) {
+  margin-top: 0;
+}
+
 .cluster {
   display: flex;
   flex-wrap: wrap;
@@ -770,11 +776,15 @@ strong {
   display: grid;
   gap: 0.35rem;
   min-width: 0;
+  /* A taller neighbour must not stretch this field's input or select. */
+  align-content: start;
 }
 
 .field-row {
   display: grid;
   gap: var(--space-4);
+  /* Fields side by side line up at their inputs even when labels or hints differ in length. */
+  align-items: end;
 }
 
 @media (min-width: 640px) {
@@ -910,8 +920,14 @@ strong {
   gap: var(--space-2);
 }
 
+/* Tiles in a row share one height even when one label wraps to two lines. */
 .choice-tile {
   position: relative;
+  display: grid;
+}
+
+.choice-tile span {
+  height: 100%;
 }
 
 .choice-tile input {
@@ -2039,20 +2055,23 @@ details.disclosure > :last-child:not(summary) {
 
 /* ---------- Lakshmipur-only pickers ---------- */
 
-.fixed-place {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-h);
-  margin: 0;
-  padding: 0.6rem 0.85rem;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  font-weight: 700;
+/* The fixed district is a short note under the upazila label, so the field stays one aligned column. */
+.fixed-area {
+  min-width: 0;
 }
 
-.fixed-place svg {
+.fixed-district {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.fixed-district svg {
   color: var(--brand);
   flex: none;
 }

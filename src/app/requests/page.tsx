@@ -22,6 +22,7 @@ const filtersSchema = z.object({
   group: z.enum(BLOOD_GROUPS).optional().catch(undefined),
   division: id,
   district: id,
+  upazila: id,
   page: z.coerce.number().int().min(1).max(500).optional().catch(undefined),
 });
 
@@ -31,11 +32,11 @@ export default async function RequestBoardPage({ searchParams }: { searchParams:
   const sp = await searchParams;
   const filters = filtersSchema.parse(Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
   const [result, locs, index] = await Promise.all([
-    listPublicRequests({ bloodGroup: filters.group ?? null, divisionId: filters.division ?? null, districtId: filters.district ?? null, page: filters.page ?? 1 }),
+    listPublicRequests({ bloodGroup: filters.group ?? null, divisionId: filters.division ?? null, districtId: filters.district ?? null, upazilaId: filters.upazila ?? null, page: filters.page ?? 1 }),
     compactLocations(locale),
     getLocationIndex(),
   ]);
-  const filtered = !!(filters.group || filters.division || filters.district);
+  const filtered = !!(filters.group || filters.division || filters.district || filters.upazila);
   return (
     <>
       <PageHeader title={t.request.boardTitle} intro={t.request.boardIntro}>
@@ -50,7 +51,7 @@ export default async function RequestBoardPage({ searchParams }: { searchParams:
             <RequestFilters
               locations={locs}
               bloodGroups={[...BLOOD_GROUPS]}
-              defaults={{ bloodGroup: filters.group, divisionId: filters.division, districtId: filters.district }}
+              defaults={{ bloodGroup: filters.group, divisionId: filters.division, districtId: filters.district, upazilaId: filters.upazila }}
               labels={{
                 bloodGroup: t.common.bloodGroup,
                 anyGroup: t.common.anyBloodGroup,
@@ -92,7 +93,7 @@ export default async function RequestBoardPage({ searchParams }: { searchParams:
                 page={result.page}
                 pageCount={result.pageCount}
                 basePath="/requests"
-                params={{ group: filters.group, division: filters.division?.toString(), district: filters.district?.toString() }}
+                params={{ group: filters.group, division: filters.division?.toString(), district: filters.district?.toString(), upazila: filters.upazila?.toString() }}
                 t={t}
                 n={n}
               />

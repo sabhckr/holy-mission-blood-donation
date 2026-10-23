@@ -109,15 +109,16 @@ export function FilterSearch({
       <label className="label" htmlFor={id}>
         {label}
       </label>
-      <div className="filter-search-box">
-        <input id={id} className="input" type={type} name={name} defaultValue={value ?? ''} maxLength={80} aria-describedby={hint ? `${id}-hint` : undefined} />
-        {icon && <Search className="filter-search-icon" size={18} aria-hidden="true" />}
-      </div>
+      {/* Hint above the box, as on every other field, so the boxes in a filter row line up. */}
       {hint && (
         <p className="hint" id={`${id}-hint`}>
           {hint}
         </p>
       )}
+      <div className="filter-search-box">
+        <input id={id} className="input" type={type} name={name} defaultValue={value ?? ''} maxLength={80} aria-describedby={hint ? `${id}-hint` : undefined} />
+        {icon && <Search className="filter-search-icon" size={18} aria-hidden="true" />}
+      </div>
     </div>
   );
 }

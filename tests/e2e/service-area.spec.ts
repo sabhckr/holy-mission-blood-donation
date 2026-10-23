@@ -8,7 +8,7 @@ test('forms offer Lakshmipur only, and home search goes straight to it', async (
     await page.goto(path);
     // No division or district choice: the district is fixed to Lakshmipur.
     await expect(page.getByLabel(L(bn.common.location.division))).toHaveCount(0);
-    await expect(page.locator('.fixed-place').first()).toContainText('লক্ষ্মীপুর');
+    await expect(page.locator('.fixed-district').first()).toContainText('লক্ষ্মীপুর');
     const options = await page.getByLabel(L(bn.common.location.upazila)).locator('option').allTextContents();
     expect(options.slice(1).sort(), path).toEqual([...LAKSHMIPUR_UPAZILAS].sort());
   }
