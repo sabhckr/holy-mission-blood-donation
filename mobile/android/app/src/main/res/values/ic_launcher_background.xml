@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#A71930</color>
+    <!-- The website's background, shown behind the system bars and while a page loads. -->
+    <color name="app_background">#FFFAF7</color>
+</resources>

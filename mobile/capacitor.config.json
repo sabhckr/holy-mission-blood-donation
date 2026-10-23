@@ -1,0 +1,25 @@
+{
+  "appId": "com.lakshmipurblood.app",
+  "appName": "Lakshmipur Blood",
+  "webDir": "www",
+  "backgroundColor": "#fffaf7",
+  "appendUserAgent": "LakshmipurBloodApp",
+  "server": {
+    "url": "https://lakshmipur-blood-donation.vercel.app",
+    "errorPath": "offline.html"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchFadeOutDuration": 250,
+      "backgroundColor": "#a71930",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT"
+    },
+    "SystemBars": {
+      "style": "LIGHT"
+    }
+  }
+}
