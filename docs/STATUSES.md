@@ -4,9 +4,11 @@ Holy Mission keeps several ideas apart on purpose. None of them implies another.
 
 | Concept | Where it lives | Values | Who changes it |
 |---|---|---|---|
-| **Holy Mission's official operating area** | `operating_areas` (linked to `locations`) | active / inactive per area. Initially only **Lakshmipur district** is active. | Admins only (`operating_areas.manage`), with a reason; audit-logged. |
-| **Donor's area** | `donor_profiles.division_id / district_id / upazila_id / locality` | any place in Bangladesh | The donor; staff can correct it with a reason. |
-| **Organisation's area** | `communities.division_id / district_id` + `community_service_areas` | any place in Bangladesh | The organisation's leader. |
+| **Service area (fixed policy)** | `src/server/services/service-area.ts` (Lakshmipur, location code `dist-7`) | Lakshmipur district and its five upazilas only | Nobody in the app; it is a code-level rule enforced by every service and public query. |
+| **Holy Mission's operating areas** | `operating_areas` (linked to `locations`) | active / inactive per area, inside Lakshmipur only. Initially **Lakshmipur district**. | Admins only (`operating_areas.manage`), with a reason; audit-logged. |
+| **Donor's area** | `donor_profiles.division_id / district_id / upazila_id / locality` | Lakshmipur district (upazila optional) | The donor; staff can correct it with a reason. Older records outside Lakshmipur are kept, hidden from the public, cannot be approved, and are listed for staff at `/admin/donors?area=outside`. |
+| **Organisation's area** | `communities.division_id / district_id` + `community_service_areas` | head office in Lakshmipur; serves Lakshmipur or its upazilas | The organisation's leader. Older organisations based elsewhere are hidden from the directory and cannot be approved. |
+| **Blood request location** | `blood_requests.division_id / district_id / upazila_id` | Lakshmipur district | The requester. Older requests elsewhere are hidden from the public board; their private link still works. |
 | **Organisation status** | `communities.status` | pending → approved / rejected; approved ↔ suspended | Admins (`communities.review`). "Approved" is the only state shown as reviewed/verified. |
 | **Organisation affiliation** | `communities.affiliation` | `independent` (default) / `holy_mission` | Admins only, with a reason, and only for approved organisations. Registering never makes an organisation part of Holy Mission. |
 | **Donor registration status** | `donor_profiles.registration_status` | pending → approved / rejected (a corrected rejected profile returns to pending) | Staff (`donors.review`); never their own record. |

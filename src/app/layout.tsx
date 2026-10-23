@@ -2,16 +2,18 @@ import { appBaseUrl } from '@/server/config';
 import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_Bengali } from 'next/font/google';
 import { headers } from 'next/headers';
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
 import { managedCommunities } from '@/server/services/communities';
 import { unreadCount } from '@/server/services/notifications';
+import { MenuCloser } from '@/components/site/MenuCloser';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { SiteHeader } from '@/components/site/SiteHeader';
-import { operatingAreaSummary } from '@/components/site/operating-area';
 import './globals.css';
+import './styles/public.css';
+import './styles/account.css';
+import './styles/admin.css';
 
 const bangla = Noto_Sans_Bengali({ subsets: ['bengali', 'latin'], weight: ['400', '500', '600', '700', '800'], display: 'swap', variable: '--font-bangla' });
 
@@ -26,33 +28,26 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#b4232c' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#c62832' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const { t, locale } = await getI18n();
   const actor = await getActor();
   const currentUrl = (await headers()).get('x-url') ?? '/';
-  const [[unread, managed], operatingArea] = await Promise.all([
-    actor ? Promise.all([unreadCount(actor.userId), managedCommunities(actor)]) : Promise.resolve([0, []] as const),
-    operatingAreaSummary(locale, t),
-  ]);
+  const [unread, managed] = await (actor ? Promise.all([unreadCount(actor.userId), managedCommunities(actor)]) : Promise.resolve([0, []] as const));
   return (
     <html lang={locale} className={bangla.variable}>
       <body>
         <a className="skip-link" href="#main">
           {t.common.skipToContent}
         </a>
-        <div className="emergency-strip">
-          <div className="container">
-            {t.home.emergencyStrip}{' '}
-            <Link href="/help#emergency">{t.home.emergencyStripLink}</Link>
-          </div>
-        </div>
+        <div className="topline" aria-hidden="true" />
         <SiteHeader t={t} locale={locale} actor={actor} currentUrl={currentUrl} unread={unread} manageSlug={managed[0]?.slug ?? null} />
         <main id="main" tabIndex={-1}>
           {children}
         </main>
-        <SiteFooter t={t} operatingArea={operatingArea.sentence} />
+        <SiteFooter t={t} />
+        <MenuCloser />
       </body>
     </html>
   );

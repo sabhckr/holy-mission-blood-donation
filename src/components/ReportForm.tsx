@@ -1,10 +1,12 @@
 'use client';
 
+import { Flag } from 'lucide-react';
 import { ActionForm, SubmitButton } from './form/ActionForm';
 import { SelectField, TextArea, type Option } from './form/fields';
 import type { ClientValidationMessages } from './form/client-messages';
 import { reportAction } from '@/app/_actions/shared';
 
+/** A quiet "report" link at the bottom of a page that opens a short form. */
 export function ReportForm({
   targetType,
   targetId,
@@ -19,8 +21,11 @@ export function ReportForm({
   clientMessages?: ClientValidationMessages;
 }) {
   return (
-    <details className="disclosure">
-      <summary>{labels.title}</summary>
+    <details className="disclosure pub-quiet">
+      <summary>
+        <Flag size={16} aria-hidden="true" />
+        {labels.title}
+      </summary>
       <ActionForm action={reportAction} clientMessages={clientMessages}>
         <input type="hidden" name="targetType" value={targetType} />
         <input type="hidden" name="targetId" value={targetId} />

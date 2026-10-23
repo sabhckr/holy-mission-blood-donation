@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BadgeCheck, CircleAlert, Hourglass, Info, Phone } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { requireActor } from '@/server/auth/current';
 import { BLOOD_GROUPS } from '@/server/domain/constants';
@@ -13,6 +14,7 @@ import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
 import { CheckboxField, SelectField, TextField } from '@/components/form/fields';
 import { ConsentFields, ProfileFields, type ProfileLabels } from '@/components/DonorFormParts';
 import { consentLabels, locationLabels } from '@/components/consent-labels';
+import { IconTile, PageHead } from '@/components/account/bits';
 import { Alert, VerificationBadge } from '@/components/ui';
 import type { Messages } from '@/i18n/messages';
 import { createDonorProfileAction, requestVerificationAction, updateAccountBasicsAction, updateProfileAction } from '../actions';
@@ -44,6 +46,7 @@ const localPhone = (normalized: string) => normalized.replace(/^\+88/, '');
 export default async function ProfilePage() {
   const { t, n, locale } = await getI18n();
   const p = t.account.profile;
+  const d = t.account.dashboard;
   const actor = await requireActor('/account/profile');
   const [overview, basics, locs, communities, settings] = await Promise.all([
     getOwnDonorOverview(actor),
@@ -60,9 +63,8 @@ export default async function ProfilePage() {
   if (!overview) {
     return (
       <>
-        <h1>{p.createTitle}</h1>
-        <p>{p.createIntro}</p>
-        <ActionForm action={createDonorProfileAction} aria-label={p.createTitle}>
+        <PageHead title={p.createTitle} intro={p.createIntro} />
+        <ActionForm action={createDonorProfileAction} aria-label={p.createTitle} className="form acct-numbered">
           <fieldset className="form-section">
             <legend>{p.donorSection}</legend>
             <ProfileFields
@@ -76,7 +78,7 @@ export default async function ProfilePage() {
             <CheckboxField name="availableNow" label={p.availableNow} hint={t.auth.availableNowHint(n(settings.availabilityExpiryDays))} />
           </fieldset>
           <fieldset className="form-section">
-            <legend>{t.auth.sectionPrivacy}</legend>
+            <legend>{p.privacySection}</legend>
             <ConsentFields
               labels={consentLabels(t)}
               defaults={{
@@ -101,56 +103,75 @@ export default async function ProfilePage() {
   const canRequestVerification = donor.verificationStatus === 'unverified' || donor.verificationStatus === 'rejected';
   return (
     <>
-      <h1>{p.title}</h1>
-      <p>{p.intro}</p>
+      <PageHead title={p.title} intro={p.intro} />
 
       {donor.registrationStatus === 'rejected' && (
-        <Alert tone="warning" title={t.account.dashboard.registrationRejectedTitle}>
-          <p>{donor.registrationNote ? t.account.dashboard.registrationReason(donor.registrationNote) : t.account.dashboard.registrationNoReason}</p>
+        <Alert tone="warning" title={d.registrationRejectedTitle}>
+          <p>{donor.registrationNote ? d.registrationReason(donor.registrationNote) : d.registrationNoReason}</p>
           <p style={{ margin: 0 }}>
             <a href="#donor-title">{p.rejectedHowToFix}</a>
           </p>
         </Alert>
       )}
       {donor.registrationStatus === 'pending' && (
-        <Alert tone="info" title={`${t.account.dashboard.registrationLabel}: ${t.common.registrationStatus.pending}`}>
-          <p style={{ margin: 0 }}>{p.pendingNote}</p>
-        </Alert>
+        <p className="acct-staff-note acct-note-warning">
+          <Hourglass size={16} aria-hidden="true" />
+          <span>
+            <strong>
+              {d.registrationLabel}: {t.common.registrationStatus.pending}
+            </strong>
+            {' — '}
+            {p.pendingNote}
+          </span>
+        </p>
       )}
 
-      <section className="card stack" aria-labelledby="verification-title">
-        <h2 id="verification-title" style={{ fontSize: '1.15rem' }}>
-          {p.verificationTitle}
-        </h2>
-        <p className="cluster-sm" style={{ margin: 0 }}>
-          <span>{p.verificationStatus}:</span> <VerificationBadge status={donor.verificationStatus} t={t} />
-        </p>
-        <p className="small muted" style={{ margin: 0 }}>
-          {p.verificationExplain}
-        </p>
-        {canRequestVerification &&
-          (commOptions.length > 0 ? (
-            <ActionForm action={requestVerificationAction}>
-              <SelectField name="communityId" label={p.chooseCommunity} options={commOptions} defaultValue={commOptions[0]?.value} required />
-              <div className="form-actions">
-                <SubmitButton label={p.requestVerification} pendingLabel={t.common.actions.submitting} className="btn" />
-              </div>
-            </ActionForm>
-          ) : (
-            <p className="small" style={{ margin: 0 }}>
-              {p.noCommunityForVerification} <Link href="/communities">{p.findCommunity}</Link>
-            </p>
-          ))}
+      <section className="card" aria-labelledby="verification-title">
+        <div className="acct-card-head">
+          <IconTile icon={BadgeCheck} tone={donor.verificationStatus === 'verified' ? 'info' : 'neutral'} />
+          <div>
+            <h2 id="verification-title">{p.verificationTitle}</h2>
+            <p>{p.verificationHint}</p>
+          </div>
+        </div>
+        <div className="stack-sm">
+          <p className="cluster-sm" style={{ margin: 0 }}>
+            <span className="small muted">{p.verificationStatus}</span>
+            <VerificationBadge status={donor.verificationStatus} t={t} />
+          </p>
+          {canRequestVerification &&
+            (commOptions.length > 0 ? (
+              <ActionForm action={requestVerificationAction} className="form">
+                <SelectField name="communityId" label={p.chooseCommunity} options={commOptions} defaultValue={commOptions[0]?.value} required />
+                <div className="form-actions">
+                  <SubmitButton label={p.requestVerification} pendingLabel={t.common.actions.submitting} className="btn btn-soft" />
+                </div>
+              </ActionForm>
+            ) : (
+              <p className="small" style={{ margin: 0 }}>
+                {p.noCommunityForVerification} <Link href="/communities">{p.findCommunity}</Link>
+              </p>
+            ))}
+          <details className="disclosure acct-more">
+            <summary>
+              <span className="cluster-sm">
+                <Info size={16} aria-hidden="true" />
+                {p.verificationWhat}
+              </span>
+            </summary>
+            <p>{p.verificationExplain}</p>
+          </details>
+        </div>
       </section>
 
-      <section className="stack" aria-labelledby="donor-title">
-        <h2 id="donor-title" style={{ fontSize: '1.15rem' }}>
-          {p.donorSection}
-        </h2>
-        <Alert tone="info">{p.identityNote}</Alert>
-        <ActionForm action={updateProfileAction} aria-label={p.donorSection}>
+      <div className="acct-numbered stack">
+        <ActionForm action={updateProfileAction} aria-label={p.donorSection} className="form">
           <fieldset className="form-section">
-            <legend className="visually-hidden">{p.donorSection}</legend>
+            <legend id="donor-title">{p.donorSection}</legend>
+            <p className="acct-legend-hint">
+              <CircleAlert size={15} aria-hidden="true" />
+              {p.identityNote}
+            </p>
             <ProfileFields
               labels={profileLabels(t)}
               locations={locs}
@@ -169,31 +190,36 @@ export default async function ProfilePage() {
                 contactPhone: localPhone(donor.contactPhone),
               }}
             />
+            <div className="acct-form-actions">
+              <SubmitButton label={t.common.actions.save} pendingLabel={t.common.actions.saving} className="btn btn-primary btn-lg" />
+            </div>
           </fieldset>
-          <SubmitButton label={t.common.actions.save} pendingLabel={t.common.actions.saving} />
         </ActionForm>
-      </section>
 
-      <section className="stack" aria-labelledby="account-title">
-        <h2 id="account-title" style={{ fontSize: '1.15rem' }}>
-          {p.accountSection}
-        </h2>
-        <ActionForm action={updateAccountBasicsAction} aria-label={p.accountSection}>
+        <ActionForm action={updateAccountBasicsAction} aria-label={p.accountSection} className="form">
           <fieldset className="form-section">
-            <legend className="visually-hidden">{p.accountSection}</legend>
+            <legend id="account-title">{p.accountSection}</legend>
+            <p className="acct-legend-hint">{p.accountSectionHint}</p>
             <TextField name="displayName" label={t.auth.displayName} autoComplete="name" required maxLength={80} defaultValue={basics?.displayName} />
             <TextField name="email" type="email" label={t.auth.email} hint={t.auth.emailHint} autoComplete="email" optionalLabel={t.common.states.optional} maxLength={200} defaultValue={basics?.email} />
-            <dl className="dl">
-              <dt>{p.accountPhone}</dt>
-              <dd>{basics ? formatBdPhone(basics.phone) : ''}</dd>
-            </dl>
-            <p className="small muted" style={{ margin: 0 }}>
-              {p.accountPhoneNote}
-            </p>
+            <div className="acct-subtle">
+              <p className="acct-meta" style={{ color: 'var(--ink-2)' }}>
+                <span>
+                  <Phone size={15} aria-hidden="true" />
+                  {p.accountPhone}
+                </span>
+              </p>
+              <p className="phone-reveal" style={{ margin: 0, fontSize: '1.15rem' }}>
+                {basics ? formatBdPhone(basics.phone) : ''}
+              </p>
+              <p className="hint">{p.accountPhoneNote}</p>
+            </div>
+            <div className="acct-form-actions">
+              <SubmitButton label={t.common.actions.save} pendingLabel={t.common.actions.saving} className="btn" />
+            </div>
           </fieldset>
-          <SubmitButton label={t.common.actions.save} pendingLabel={t.common.actions.saving} />
         </ActionForm>
-      </section>
+      </div>
     </>
   );
 }

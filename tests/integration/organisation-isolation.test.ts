@@ -27,9 +27,9 @@ beforeEach(resetDb);
 const PRIVATE_FIELDS = ['representativeName', 'representativeRole', 'representativePhone', 'verificationInfo'];
 
 async function communityInput(over: Partial<CommunityInput> = {}): Promise<CommunityInput> {
-  const hq = await place('Chattogram');
+  const hq = await place('Lakshmipur');
   return {
-    name: 'Chattogram Blood Bank Volunteers',
+    name: 'Ramganj Blood Bank Volunteers',
     nameEn: null,
     kind: 'volunteer_group',
     description: null,
@@ -90,7 +90,7 @@ describe('organisation registration details', () => {
     });
   });
 
-  it('stores representative details normalised, from any district, and starts pending and independent', async () => {
+  it('stores representative details normalised and starts pending and independent', async () => {
     const user = await makeUser('Applicant');
     const c = await registerCommunity(user.actor, await communityInput());
     expect(c.status).toBe('pending');

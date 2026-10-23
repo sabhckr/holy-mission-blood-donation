@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowRight, CalendarDays, Flag, UserRound } from 'lucide-react';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
 import { requirePermission } from '@/server/auth/current';
@@ -7,7 +8,10 @@ import { communitySlugsByIds } from '@/server/services/admin-queries';
 import { can } from '@/server/policy';
 import { listReports } from '@/server/services/reports';
 import { AdminAction } from '@/components/admin/AdminAction';
-import { Badge, EmptyState, Pagination } from '@/components/ui';
+import { AdminEmpty, AdminPageHead, StatusTabs } from '@/components/admin/AdminUi';
+import { ADMIN_ICONS } from '@/components/admin/icons';
+import { ReportStatusBadge } from '@/components/admin/StatusBadges';
+import { Badge, Pagination } from '@/components/ui';
 import { handleReportAction } from '../actions';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -39,79 +43,99 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
   };
   return (
     <>
-      <header className="stack-sm">
-        <h1>{r.title}</h1>
-        <p className="muted">{r.intro}</p>
-      </header>
-      <nav className="cluster-sm" aria-label={r.status}>
-        <Link className={`btn btn-sm${status === null ? ' btn-dark' : ''}`} href="/admin/reports" aria-current={status === null ? 'page' : undefined}>
-          {t.admin.any}
-        </Link>
-        {STATUSES.map((s) => (
-          <Link key={s} className={`btn btn-sm${status === s ? ' btn-dark' : ''}`} href={`/admin/reports?status=${s}`} aria-current={status === s ? 'page' : undefined}>
-            {r.statuses[s]}
-          </Link>
-        ))}
-      </nav>
-      <p style={{ fontWeight: 600 }}>{t.admin.results(n(result.total))}</p>
-      {result.items.length === 0 ? (
-        <EmptyState title={r.empty} />
-      ) : (
-        <ul className="list-plain stack">
-          {result.items.map(({ report, reporterName }) => {
-            const href = targetHref(report.targetType, report.targetId);
-            const closed = report.status === 'resolved' || report.status === 'dismissed';
-            return (
-              <li key={report.id} className="card card-tight stack-sm">
-                <div className="cluster between">
-                  <strong>{t.common.report.reasons[report.reason]}</strong>
-                  <Badge tone={report.status === 'open' ? 'warning' : report.status === 'reviewing' ? 'info' : 'neutral'}>{r.statuses[report.status]}</Badge>
-                </div>
-                <dl className="dl">
-                  <dt>{r.target}</dt>
-                  <dd>
-                    {r.targetTypes[report.targetType]}
-                    {href ? (
-                      <>
-                        {' · '}
-                        <Link href={href}>{r.openTarget}</Link>
-                      </>
-                    ) : href === null ? (
-                      <>
-                        {' · '}
-                        <span className="muted">{r.targetMissing}</span>
-                      </>
-                    ) : null}
-                  </dd>
-                  {report.details && (
-                    <>
-                      <dt>{r.details}</dt>
-                      <dd>{report.details}</dd>
-                    </>
-                  )}
-                  <dt>{r.reporter}</dt>
-                  <dd>{report.reporterUserId ? can(actor, 'users.manage') ? <Link href={`/admin/users/${report.reporterUserId}`}>{reporterName}</Link> : reporterName : r.anonymous}</dd>
-                  <dt>{r.created}</dt>
-                  <dd>{dateTime(report.createdAt)}</dd>
-                  {report.resolutionNote && (
-                    <>
-                      <dt>{r.resolution}</dt>
-                      <dd>{report.resolutionNote}</dd>
-                    </>
-                  )}
-                </dl>
-                {!closed && (
-                  <div className="grid grid-3">
-                    {report.status === 'open' && <AdminAction action={handleReportAction} hidden={{ reportId: report.id, status: 'reviewing' }} submit={r.setReviewing} pending={pending} />}
-                    <AdminAction action={handleReportAction} hidden={{ reportId: report.id, status: 'resolved' }} submit={r.resolve} pending={pending} tone="primary" note={noteField} />
-                    <AdminAction action={handleReportAction} hidden={{ reportId: report.id, status: 'dismissed' }} submit={r.dismiss} pending={pending} tone="danger" note={noteField} />
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <AdminPageHead icon={ADMIN_ICONS.reports} title={r.title} intro={r.intro} />
+      <StatusTabs
+        label={r.status}
+        items={[
+          { href: '/admin/reports', label: t.admin.any, current: status === null },
+          ...STATUSES.map((s) => ({ href: `/admin/reports?status=${s}`, label: r.statuses[s], current: status === s })),
+        ]}
+      />
+      <section className="stack" aria-labelledby="report-results">
+        <div className="results-bar">
+          <p id="report-results">{t.admin.results(n(result.total))}</p>
+        </div>
+        {result.items.length === 0 ? (
+          <AdminEmpty title={r.empty} done={status === null || status === 'open' || status === 'reviewing'} />
+        ) : (
+          <ul className="record-list">
+            {result.items.map(({ report, reporterName }) => {
+              const href = targetHref(report.targetType, report.targetId);
+              const closed = report.status === 'resolved' || report.status === 'dismissed';
+              const headingId = `report-${report.id}`;
+              return (
+                <li key={report.id}>
+                  <article className="card card-tight record-card" aria-labelledby={headingId}>
+                    <div className="record-card-head">
+                      <span className="record-card-icon">
+                        <Flag size={20} aria-hidden="true" />
+                      </span>
+                      <div className="record-card-title">
+                        <h2 id={headingId}>{t.common.report.reasons[report.reason]}</h2>
+                        <p>{dateTime(report.createdAt)}</p>
+                      </div>
+                    </div>
+                    <div className="record-card-badges">
+                      <ReportStatusBadge status={report.status} t={t} />
+                      <Badge>{r.targetTypes[report.targetType]}</Badge>
+                    </div>
+                    {report.details && <p>{report.details}</p>}
+                    <dl className="meta-list">
+                      <div>
+                        <dt>{r.target}</dt>
+                        <dd>
+                          {href ? (
+                            <Link className="section-link" href={href}>
+                              {r.openTarget}
+                              <ArrowRight size={16} aria-hidden="true" />
+                            </Link>
+                          ) : href === null ? (
+                            <span className="muted">{r.targetMissing}</span>
+                          ) : (
+                            r.targetTypes[report.targetType]
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>
+                          <UserRound size={14} aria-hidden="true" />
+                          {r.reporter}
+                        </dt>
+                        <dd>
+                          {report.reporterUserId ? can(actor, 'users.manage') ? <Link href={`/admin/users/${report.reporterUserId}`}>{reporterName}</Link> : reporterName : r.anonymous}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>
+                          <CalendarDays size={14} aria-hidden="true" />
+                          {r.created}
+                        </dt>
+                        <dd>{dateTime(report.createdAt)}</dd>
+                      </div>
+                      {report.resolutionNote && (
+                        <div className="meta-wide">
+                          <dt>{r.resolution}</dt>
+                          <dd>{report.resolutionNote}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    {!closed && (
+                      <div className="action-row">
+                        {report.status === 'open' && <AdminAction action={handleReportAction} hidden={{ reportId: report.id, status: 'reviewing' }} submit={r.setReviewing} pending={pending} size="md" />}
+                        <AdminAction action={handleReportAction} hidden={{ reportId: report.id, status: 'resolved' }} submit={r.resolve} pending={pending} tone="primary" size="md" note={noteField} />
+                        <details className="disclosure disclosure-danger">
+                          <summary>{r.dismiss}</summary>
+                          <AdminAction action={handleReportAction} hidden={{ reportId: report.id, status: 'dismissed' }} submit={r.dismiss} pending={pending} tone="danger" size="md" note={noteField} />
+                        </details>
+                      </div>
+                    )}
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
       <Pagination page={result.page} pageCount={result.pageCount} basePath="/admin/reports" params={{ status: status ?? undefined }} t={t} n={n} />
     </>
   );

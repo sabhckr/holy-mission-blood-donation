@@ -10,7 +10,7 @@ import { locationLabels } from '@/components/consent-labels';
 import { RequestAdvice } from '@/components/request/RequestAdvice';
 import { RequestCard } from '@/components/request/RequestCard';
 import { RequestFilters } from '@/components/request/RequestFilters';
-import { EmptyState, PageHeader, Pagination } from '@/components/ui';
+import { PageHeader, Pagination } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -35,55 +35,73 @@ export default async function RequestBoardPage({ searchParams }: { searchParams:
     compactLocations(locale),
     getLocationIndex(),
   ]);
+  const filtered = !!(filters.group || filters.division || filters.district);
   return (
     <>
       <PageHeader title={t.request.boardTitle} intro={t.request.boardIntro}>
-        <Link className="btn btn-primary" href="/requests/new">
+        <Link className="btn btn-primary header-cta" href="/requests/new">
           <Siren size={18} aria-hidden="true" />
           {t.request.newCta}
         </Link>
       </PageHeader>
-      <div className="container section layout-sidebar">
-        <aside className="stack">
-          <div className="card card-tight">
-            <h2 style={{ fontSize: '1.1rem' }}>{t.request.filters}</h2>
+      <div className="section pub-body">
+        <div className="container stack">
+          <section className="card card-tight" aria-label={t.request.filters}>
             <RequestFilters
               locations={locs}
               bloodGroups={[...BLOOD_GROUPS]}
               defaults={{ bloodGroup: filters.group, divisionId: filters.division, districtId: filters.district }}
-              labels={{ bloodGroup: t.common.bloodGroup, anyGroup: t.common.anyBloodGroup, search: t.common.actions.search, location: locationLabels(t) }}
+              labels={{
+                bloodGroup: t.common.bloodGroup,
+                anyGroup: t.common.anyBloodGroup,
+                search: t.common.actions.search,
+                location: locationLabels(t),
+                area: t.request.areaFilter,
+                groupNav: t.request.groupFilterLabel,
+              }}
             />
-            <p style={{ marginTop: 'var(--space-3)' }}>
-              <Link href="/requests">{t.common.actions.clearFilters}</Link>
-            </p>
+          </section>
+
+          <div className="board-layout">
+            <section className="results" aria-labelledby="board-count" aria-live="polite">
+              <div className="results-head">
+                <h2 id="board-count" className="results-count">
+                  {t.request.resultCount(n(result.total))}
+                </h2>
+                {filtered && <Link href="/requests">{t.common.actions.clearFilters}</Link>}
+              </div>
+              {result.items.length === 0 ? (
+                <div className="no-results-head card">
+                  <span className="no-results-icon">
+                    <Siren size={28} aria-hidden="true" />
+                  </span>
+                  <h3>{t.request.emptyTitle}</h3>
+                  <p>{t.request.emptyBody}</p>
+                  <Link className="btn btn-primary" href="/requests/new">
+                    {t.request.newCta}
+                  </Link>
+                </div>
+              ) : (
+                <div className="donor-grid">
+                  {result.items.map((r) => (
+                    <RequestCard key={r.publicId} item={r} place={labelFrom(index, locale, r.upazilaId, r.districtId)} i18n={i18n} />
+                  ))}
+                </div>
+              )}
+              <Pagination
+                page={result.page}
+                pageCount={result.pageCount}
+                basePath="/requests"
+                params={{ group: filters.group, division: filters.division?.toString(), district: filters.district?.toString() }}
+                t={t}
+                n={n}
+              />
+            </section>
+            <aside>
+              <RequestAdvice t={t} />
+            </aside>
           </div>
-          <RequestAdvice t={t} />
-        </aside>
-        <section className="stack" aria-live="polite">
-          <p style={{ fontWeight: 700, margin: 0 }}>{t.request.resultCount(n(result.total))}</p>
-          {result.items.length === 0 ? (
-            <EmptyState icon={<Siren size={40} aria-hidden="true" />} title={t.request.emptyTitle}>
-              <p>{t.request.emptyBody}</p>
-              <Link className="btn btn-primary" href="/requests/new">
-                {t.request.newCta}
-              </Link>
-            </EmptyState>
-          ) : (
-            <div className="grid grid-2">
-              {result.items.map((r) => (
-                <RequestCard key={r.publicId} item={r} place={labelFrom(index, locale, r.upazilaId, r.districtId)} i18n={i18n} />
-              ))}
-            </div>
-          )}
-          <Pagination
-            page={result.page}
-            pageCount={result.pageCount}
-            basePath="/requests"
-            params={{ group: filters.group, division: filters.division?.toString(), district: filters.district?.toString() }}
-            t={t}
-            n={n}
-          />
-        </section>
+        </div>
       </div>
     </>
   );

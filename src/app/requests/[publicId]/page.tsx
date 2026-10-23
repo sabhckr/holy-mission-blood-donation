@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { HeartHandshake, LogIn } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { and, eq } from 'drizzle-orm';
 import { getI18n } from '@/i18n/server';
@@ -12,6 +13,7 @@ import { getRequestForViewer } from '@/server/services/requests';
 import { ReportForm } from '@/components/ReportForm';
 import { ManagePanel } from '@/components/request/ManagePanel';
 import { RequestSummary } from '@/components/request/RequestSummary';
+import { clientValidationMessages } from '@/components/form/client-messages';
 import { OfferHelpForm, WithdrawForm } from '@/components/request/RequestForms';
 import { Alert, Badge, BloodGroupBadge, Disclaimer, PageHeader } from '@/components/ui';
 
@@ -48,80 +50,88 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <PageHeader title={t.request.detailTitle(r.bloodGroup)} crumbs={[{ href: '/requests', label: t.request.boardTitle }]}>
+      <PageHeader title={t.request.detailTitle(r.bloodGroup)} crumbs={[{ href: '/requests', label: t.request.boardTitle }]} crumbsLabel={t.common.nav.breadcrumbs}>
         <BloodGroupBadge group={r.bloodGroup} label={t.common.bloodGroup} />
       </PageHeader>
-      <div className="container section grid grid-2">
-        <div className="stack">
-          <RequestSummary view={view} place={place} i18n={i18n} />
-          <Disclaimer t={t} compact />
-        </div>
+      <div className="section pub-body">
+        <div className="container detail-layout">
+          <div className="stack">
+            {!open && <Alert tone="info">{t.request.closedNote}</Alert>}
+            <RequestSummary view={view} place={place} i18n={i18n} />
+          </div>
 
-        <div className="stack">
-          {!open && <Alert tone="info">{t.request.closedNote}</Alert>}
+          <div className="stack">
+            {open && !view.access.canManage && (
+              <section className="card help-card stack" aria-labelledby="help-heading">
+                <h2 id="help-heading" className="pub-panel-title">
+                  <HeartHandshake size={22} aria-hidden="true" />
+                  {t.request.canHelpTitle}
+                </h2>
+                {!signedIn ? (
+                  <>
+                    <p style={{ marginBottom: 0 }}>{t.request.signInToHelp}</p>
+                    <Link className="btn btn-primary btn-lg btn-block" href={`/signin?next=${encodeURIComponent(`/requests/${r.publicId}`)}`}>
+                      <LogIn size={20} aria-hidden="true" />
+                      {t.common.nav.signIn}
+                    </Link>
+                  </>
+                ) : !actor.donorId ? (
+                  <>
+                    <p style={{ marginBottom: 0 }}>{t.request.needDonorProfile}</p>
+                    <Link className="btn btn-primary btn-lg btn-block" href="/account/profile">
+                      {t.request.createProfile}
+                    </Link>
+                  </>
+                ) : offerBlocked && !myResponse ? (
+                  <>
+                    <p style={{ marginBottom: 0 }}>{offerBlocked === 'approval' ? t.request.needApproval : t.request.needActiveListing}</p>
+                    <Link className="btn" href="/account">
+                      {t.common.nav.account}
+                    </Link>
+                  </>
+                ) : myResponse ? (
+                  <div className="stack-sm">
+                    <p style={{ margin: 0 }}>
+                      {t.request.yourResponse}: <Badge tone={myResponse.status === 'confirmed' ? 'success' : 'warning'}>{t.request.responseStatus[myResponse.status]}</Badge>
+                    </p>
+                    <WithdrawForm publicId={r.publicId} labels={{ submit: t.request.withdrawButton, submitting: t.common.actions.saving }} />
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ marginBottom: 0 }}>{t.request.canHelpBody}</p>
+                    {myGroup && myGroup !== r.bloodGroup && <Alert tone="info">{t.request.groupMismatch(myGroup, r.bloodGroup)}</Alert>}
+                    <OfferHelpForm
+                      publicId={r.publicId}
+                      labels={{ message: t.request.offerMessage, hint: t.request.offerMessageHint, submit: t.request.offerButton, submitting: t.common.actions.submitting, optional: t.common.states.optional }}
+                    />
+                  </>
+                )}
+              </section>
+            )}
 
-          {open && !view.access.canManage && (
-            <section className="card stack" aria-labelledby="help-heading">
-              <h2 id="help-heading">{t.request.canHelpTitle}</h2>
-              {!signedIn ? (
-                <>
-                  <p>{t.request.signInToHelp}</p>
-                  <Link className="btn btn-primary" href={`/signin?next=${encodeURIComponent(`/requests/${r.publicId}`)}`}>
-                    {t.common.nav.signIn}
-                  </Link>
-                </>
-              ) : !actor.donorId ? (
-                <>
-                  <p>{t.request.needDonorProfile}</p>
-                  <Link className="btn btn-primary" href="/account/profile">
-                    {t.request.createProfile}
-                  </Link>
-                </>
-              ) : offerBlocked && !myResponse ? (
-                <>
-                  <p>{offerBlocked === 'approval' ? t.request.needApproval : t.request.needActiveListing}</p>
-                  <Link className="btn" href="/account">
-                    {t.common.nav.account}
-                  </Link>
-                </>
-              ) : myResponse ? (
-                <div className="stack-sm">
-                  <p style={{ margin: 0 }}>
-                    {t.request.yourResponse}: <Badge tone={myResponse.status === 'confirmed' ? 'success' : 'warning'}>{t.request.responseStatus[myResponse.status]}</Badge>
-                  </p>
-                  <WithdrawForm publicId={r.publicId} labels={{ submit: t.request.withdrawButton, submitting: t.common.actions.saving }} />
-                </div>
-              ) : (
-                <>
-                  <p>{t.request.canHelpBody}</p>
-                  {myGroup && myGroup !== r.bloodGroup && <Alert tone="info">{t.request.groupMismatch(myGroup, r.bloodGroup)}</Alert>}
-                  <OfferHelpForm
-                    publicId={r.publicId}
-                    labels={{ message: t.request.offerMessage, hint: t.request.offerMessageHint, submit: t.request.offerButton, submitting: t.common.actions.submitting, optional: t.common.states.optional }}
-                  />
-                </>
-              )}
-            </section>
-          )}
+            {view.access.isRequester && open && <Alert tone="info">{t.request.ownRequestNote}</Alert>}
 
-          {view.access.isRequester && open && <Alert tone="info">{t.request.ownRequestNote}</Alert>}
+            {view.access.canManage && <ManagePanel view={view} i18n={i18n} />}
+          </div>
 
-          {view.access.canManage && <ManagePanel view={view} i18n={i18n} />}
-
-          <ReportForm
-            targetType="request"
-            targetId={r.publicId}
-            reasons={REPORT_REASONS.map((reason) => ({ value: reason, label: t.common.report.reasons[reason] }))}
-            labels={{
-              title: t.common.report.title,
-              reason: t.common.report.reason,
-              details: t.common.report.details,
-              detailsHint: t.common.report.detailsHint,
-              submit: t.common.report.submit,
-              submitting: t.common.actions.submitting,
-              choose: t.common.report.reason,
-            }}
-          />
+          <div className="detail-wide stack">
+            <Disclaimer t={t} compact />
+            <ReportForm
+              targetType="request"
+              targetId={r.publicId}
+              reasons={REPORT_REASONS.map((reason) => ({ value: reason, label: t.common.report.reasons[reason] }))}
+              labels={{
+                title: t.common.report.title,
+                reason: t.common.report.reason,
+                details: t.common.report.details,
+                detailsHint: t.common.report.detailsHint,
+                submit: t.common.report.submit,
+                submitting: t.common.actions.submitting,
+                choose: t.common.report.reason,
+              }}
+              clientMessages={clientValidationMessages(t)}
+            />
+          </div>
         </div>
       </div>
     </>

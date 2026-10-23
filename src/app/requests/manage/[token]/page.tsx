@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ExternalLink, KeyRound } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
@@ -25,9 +26,13 @@ export default async function ManageByTokenPage({ params }: { params: Promise<{ 
     return (
       <>
         <PageHeader title={t.request.tokenTitle} />
-        <div className="container container-narrow section stack">
-          <Alert tone="error">{t.request.tokenInvalid}</Alert>
-          <Link href="/requests">{t.request.boardTitle}</Link>
+        <div className="section pub-body">
+          <div className="container container-narrow stack">
+            <Alert tone="error">{t.request.tokenInvalid}</Alert>
+            <Link className="btn" href="/requests">
+              {t.request.boardTitle}
+            </Link>
+          </div>
         </div>
       </>
     );
@@ -36,20 +41,36 @@ export default async function ManageByTokenPage({ params }: { params: Promise<{ 
   const r = view.request;
   return (
     <>
-      <PageHeader title={t.request.detailTitle(r.bloodGroup)} intro={t.request.tokenKeepPrivate}>
+      <PageHeader title={t.request.detailTitle(r.bloodGroup)}>
         <BloodGroupBadge group={r.bloodGroup} label={t.common.bloodGroup} />
       </PageHeader>
-      <div className="container section grid grid-2">
-        <div className="stack">
-          <RequestSummary view={view} place={labelFrom(index, locale, r.upazilaId, r.districtId, r.divisionId)} i18n={i18n} />
-          {r.showOnPublicBoard && (
-            <Link className="btn" href={`/requests/${r.publicId}`}>
-              {t.request.publicPageLink}
-            </Link>
-          )}
-          <Disclaimer t={t} compact />
+      <div className="section pub-body">
+        <div className="container detail-layout">
+          <div className="detail-wide">
+            <div className="card card-tight keep-private next-note">
+              <span className="pub-icon">
+                <KeyRound size={20} aria-hidden="true" />
+              </span>
+              <div>
+                <h2>{t.request.keepPrivateTitle}</h2>
+                <p>{t.request.tokenKeepPrivate}</p>
+              </div>
+            </div>
+          </div>
+          <div className="stack">
+            <RequestSummary view={view} place={labelFrom(index, locale, r.upazilaId, r.districtId, r.divisionId)} i18n={i18n} />
+            {r.showOnPublicBoard && (
+              <Link className="btn btn-ghost" href={`/requests/${r.publicId}`}>
+                <ExternalLink size={18} aria-hidden="true" />
+                {t.request.publicPageLink}
+              </Link>
+            )}
+          </div>
+          <ManagePanel view={view} i18n={i18n} token={token} />
+          <div className="detail-wide">
+            <Disclaimer t={t} compact />
+          </div>
         </div>
-        <ManagePanel view={view} i18n={i18n} token={token} />
       </div>
     </>
   );

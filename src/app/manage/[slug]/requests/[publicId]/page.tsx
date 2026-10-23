@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Users } from 'lucide-react';
+import { ArrowLeft, Hand, Share2, UserCog, Users } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { requireActor } from '@/server/auth/current';
 import { isAdmin } from '@/server/policy';
@@ -12,7 +12,8 @@ import { effectiveStatus, getRequestForViewer } from '@/server/services/requests
 import { AssignCoordinatorForm, EscalateForm, TakeRequestForm } from '@/components/request/CoordinatorForms';
 import { ManagePanel } from '@/components/request/ManagePanel';
 import { RequestSummary } from '@/components/request/RequestSummary';
-import { STATUS_TONE, URGENCY_TONE } from '@/components/request/RequestCard';
+import { STATUS_TONE } from '@/components/request/RequestCard';
+import { IconTile } from '@/components/account/bits';
 import { Alert, Badge, BloodGroupBadge, NoAccess } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -66,19 +67,33 @@ export default async function CoordinatorRequestPage({ params }: { params: Promi
   }
 
   return (
-    <div className="stack">
-      <p className="small">
-        <Link href={base}>{t.request.backToQueue}</Link>
+    <>
+      <p style={{ margin: 0 }}>
+        <Link className="section-link" href={base}>
+          <ArrowLeft size={16} aria-hidden="true" />
+          {t.request.backToQueue}
+        </Link>
       </p>
-      <div className="cluster">
+      <div className="acct-hello">
         <BloodGroupBadge group={request.bloodGroup} label={t.common.bloodGroup} />
-        <h2 style={{ margin: 0 }}>{t.request.detailTitle(request.bloodGroup)}</h2>
+        <div>
+          <h2 style={{ margin: 0 }}>{t.request.detailTitle(request.bloodGroup)}</h2>
+          <div className="acct-item-badges">
+            <span className={`urgency urgency-${request.urgency}`}>{t.common.urgency[request.urgency]}</span>
+            <Badge tone={STATUS_TONE[status]}>{t.common.requestStatus[status]}</Badge>
+          </div>
+        </div>
       </div>
 
       {canTake && (
         <section className="card card-accent stack-sm" aria-labelledby="take-heading">
-          <h2 id="take-heading">{t.request.takeTitle}</h2>
-          <p>{t.request.takeBody}</p>
+          <div className="acct-card-head" style={{ marginBottom: 0 }}>
+            <IconTile icon={Hand} />
+            <div>
+              <h2 id="take-heading">{t.request.takeTitle}</h2>
+              <p>{t.request.takeBody}</p>
+            </div>
+          </div>
           <TakeRequestForm publicId={publicId} communityId={communityId} labels={{ submit: t.request.takeButton, submitting: t.common.actions.saving }} />
         </section>
       )}
@@ -87,14 +102,17 @@ export default async function CoordinatorRequestPage({ params }: { params: Promi
         <div className="grid grid-2">
           <div className="stack">
             <RequestSummary view={view} place={place} i18n={i18n} />
-            <Link className="btn" href={donorSearch}>
+            <Link className="btn btn-soft btn-block" href={donorSearch}>
               <Users size={18} aria-hidden="true" />
               {t.request.findDonors}
             </Link>
 
             {assignedHere && open && coordinatorOptions.length > 0 && (
               <section className="card stack">
-                <h2>{t.request.assignTitle}</h2>
+                <div className="acct-card-head" style={{ marginBottom: 0 }}>
+                  <IconTile icon={UserCog} tone="neutral" />
+                  <h2>{t.request.assignTitle}</h2>
+                </div>
                 <AssignCoordinatorForm
                   publicId={publicId}
                   communityId={communityId}
@@ -106,7 +124,10 @@ export default async function CoordinatorRequestPage({ params }: { params: Promi
             )}
 
             <section className="card stack">
-              <h2>{t.request.escalateTitle}</h2>
+              <div className="acct-card-head" style={{ marginBottom: 0 }}>
+                <IconTile icon={Share2} tone="neutral" />
+                <h2>{t.request.escalateTitle}</h2>
+              </div>
               {open && (
                 <>
                   <p className="muted">{t.request.escalateBody}</p>
@@ -131,7 +152,7 @@ export default async function CoordinatorRequestPage({ params }: { params: Promi
                   )}
                 </>
               )}
-              <h3>{t.request.escalationsTitle}</h3>
+              <h3 className="acct-h3">{t.request.escalationsTitle}</h3>
               {view.escalations.length === 0 ? (
                 <p className="muted">{t.request.noEscalations}</p>
               ) : (
@@ -151,10 +172,6 @@ export default async function CoordinatorRequestPage({ params }: { params: Promi
         </div>
       ) : (
         <div className="card stack">
-          <div className="cluster-sm">
-            <Badge tone={URGENCY_TONE[request.urgency]}>{t.common.urgency[request.urgency]}</Badge>
-            <Badge tone={STATUS_TONE[status]}>{t.common.requestStatus[status]}</Badge>
-          </div>
           <dl className="dl">
             <dt>{t.request.units}</dt>
             <dd>{t.request.unitsCount(n(request.units))}</dd>
@@ -166,12 +183,14 @@ export default async function CoordinatorRequestPage({ params }: { params: Promi
             <dd>{dateTime(request.neededAt)}</dd>
           </dl>
           <Alert tone="info">{t.request.limitedView}</Alert>
-          <Link className="btn" href={donorSearch}>
-            <Users size={18} aria-hidden="true" />
-            {t.request.findDonors}
-          </Link>
+          <div>
+            <Link className="btn btn-soft" href={donorSearch}>
+              <Users size={18} aria-hidden="true" />
+              {t.request.findDonors}
+            </Link>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

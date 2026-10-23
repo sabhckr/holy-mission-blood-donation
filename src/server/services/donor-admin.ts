@@ -17,6 +17,7 @@ import { audit } from './audit';
 import { donorAvailability, recordAvailability, type ConsentInput, type DonorProfileInput, validateDonorProfile } from './donors';
 import { createNotifications } from './notifications';
 import { getSettings } from './settings';
+import { getServiceArea, inServiceDistrict, inServiceDistrictFlag } from './service-area';
 
 type DonorRow = typeof donorProfiles.$inferSelect;
 
@@ -53,6 +54,8 @@ export interface StaffDonorFilters {
   availability?: 'available' | 'unavailable' | 'unknown' | null;
   bloodGroup?: BloodGroup | null;
   districtId?: number | null;
+  /** 'outside' lists records saved before the Lakshmipur-only rule, so staff can correct them. */
+  area?: 'inside' | 'outside' | null;
   page?: number;
 }
 
@@ -72,6 +75,8 @@ export async function listDonorsForStaff(actor: Actor, filters: StaffDonorFilter
   if (filters.listing) conds.push(eq(donorProfiles.status, filters.listing));
   if (filters.bloodGroup) conds.push(eq(donorProfiles.bloodGroup, filters.bloodGroup));
   if (filters.districtId) conds.push(eq(donorProfiles.districtId, filters.districtId));
+  if (filters.area === 'inside') conds.push(inServiceDistrict(donorProfiles.districtId));
+  if (filters.area === 'outside') conds.push(sql`not (${inServiceDistrict(donorProfiles.districtId)})`);
   if (filters.availability === 'available') conds.push(sql`${donorProfiles.availabilityStatus} = 'available' and ${donorProfiles.availabilityExpiresAt} > now()`);
   if (filters.availability === 'unavailable') conds.push(eq(donorProfiles.availabilityStatus, 'unavailable'));
   if (filters.availability === 'unknown') {
@@ -86,7 +91,7 @@ export async function listDonorsForStaff(actor: Actor, filters: StaffDonorFilter
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(Math.max(1, filters.page ?? 1), pageCount);
   const rows = await db
-    .select({ donor: donorProfiles, accountStatus: users.status, listed: donorConsents.listedInSearch })
+    .select({ donor: donorProfiles, accountStatus: users.status, listed: donorConsents.listedInSearch, inServiceArea: inServiceDistrictFlag(donorProfiles.districtId) })
     .from(donorProfiles)
     .innerJoin(users, eq(users.id, donorProfiles.userId))
     .leftJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
@@ -113,6 +118,7 @@ export async function listDonorsForStaff(actor: Actor, filters: StaffDonorFilter
       availabilitySource: r.donor.availabilitySource,
       availabilityConfirmedAt: r.donor.availabilityConfirmedAt,
       listedInSearch: r.listed ?? false,
+      inServiceArea: r.inServiceArea,
       accountStatus: r.accountStatus,
       createdAt: r.donor.createdAt,
     })),
@@ -175,6 +181,8 @@ export async function reviewDonorRegistration(actor: Actor, donorId: string, dec
     const donor = await loadDonor(tx, donorId, true);
     refuseSelf(actor, donor);
     if (donor.registrationStatus === decision) throw new AppError('invalid_state');
+    // A donor whose address is outside Lakshmipur cannot be approved until the address is corrected.
+    if (decision === 'approved' && donor.districtId !== (await getServiceArea(tx)).districtId) throw new AppError('invalid_state', 'outside_service_area');
     await tx
       .update(donorProfiles)
       .set({ registrationStatus: decision, registrationReviewedByUserId: actor.userId, registrationReviewedAt: new Date(), registrationNote: note, updatedAt: new Date() })

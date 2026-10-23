@@ -5,6 +5,15 @@ export const help = defineMessages({
     title: 'সাহায্য ও জরুরি পরামর্শ',
     intro: 'রক্ত খোঁজা, রক্ত দেওয়া আর এই ওয়েবসাইট ব্যবহারের সহজ নির্দেশনা।',
     tocLabel: 'এই পাতায় যা আছে',
+    toc: {
+      emergency: 'জরুরি করণীয়',
+      find: 'রক্তদাতা খোঁজা',
+      eligibility: 'আবার কবে দেওয়া যাবে',
+      faq: 'প্রশ্ন ও উত্তর',
+    },
+    faqTitle: 'প্রায়ই যা জানতে চান',
+    faqIntro: 'প্রশ্নে চাপ দিলে উত্তর দেখাবে।',
+    stillNeedHelpBody: 'আমাদের সাথে যোগাযোগ করুন, অথবা আপনার এলাকার সংগঠনের সাহায্য নিন।',
     emergencyTitle: 'জরুরি অবস্থায় করণীয়',
     emergencySteps: [
       'রোগীর অবস্থা গুরুতর হলে সবার আগে হাসপাতালের চিকিৎসক ও ব্লাড ব্যাংকের সাথে কথা বলুন।',
@@ -45,6 +54,15 @@ export const help = defineMessages({
     title: 'Help and emergency advice',
     intro: 'Simple guidance on finding blood, donating, and using this website.',
     tocLabel: 'On this page',
+    toc: {
+      emergency: 'Emergency steps',
+      find: 'Finding donors',
+      eligibility: 'When can I donate again',
+      faq: 'Questions',
+    },
+    faqTitle: 'Common questions',
+    faqIntro: 'Tap a question to see the answer.',
+    stillNeedHelpBody: 'Contact us, or ask an organisation in your area for help.',
     emergencyTitle: 'What to do in an emergency',
     emergencySteps: [
       'If the patient is in a serious condition, first talk to the hospital doctors and the hospital blood bank.',

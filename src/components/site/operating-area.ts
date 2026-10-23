@@ -1,6 +1,5 @@
 import { cache } from 'react';
 import type { Locale } from '@/i18n/config';
-import { placeList } from '@/i18n/format';
 import type { Messages } from '@/i18n/messages';
 import { listOperatingAreas } from '@/server/services/operating-areas';
 
@@ -17,21 +16,14 @@ export interface OperatingAreaSummary {
 
 /**
  * Holy Mission's own official operating area(s), straight from the database. This is never
- * where donors or organisations may come from — that is all of Bangladesh.
+ * where donors or organisations may come from. The public sentence is the fixed Lakshmipur-only policy.
  */
 export async function operatingAreaSummary(locale: Locale, t: Messages): Promise<OperatingAreaSummary> {
-  const oa = t.common.operatingArea;
   const areas = await activeAreas();
-  const names = areas.map((a) => {
-    const name = locale === 'en' ? a.nameEn : a.nameBn;
-    const parent = locale === 'en' ? a.parentNameEn : a.parentNameBn;
-    if (a.level === 'upazila' && parent) return oa.upazilaName(name, parent);
-    if (a.level === 'division') return oa.divisionName(name);
-    return name;
-  });
+  void locale;
   return {
-    sentence: names.length ? oa.notice(placeList(locale, names, oa.and)) : oa.none,
+    sentence: t.common.operatingArea.notice,
     notes: areas.flatMap((a) => (a.publicNote ? [a.publicNote] : [])),
-    count: names.length,
+    count: areas.length,
   };
 }

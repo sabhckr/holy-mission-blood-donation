@@ -26,7 +26,9 @@ function useField(name: string, defaultValue?: string | null) {
 }
 
 function Label({ htmlFor, label, required, requiredLabel, optionalLabel }: { htmlFor: string; label: string; required?: boolean; requiredLabel?: string; optionalLabel?: string }) {
-  return (
+  const { requiredMark } = useFormContext();
+  const word = requiredLabel ?? requiredMark;
+  const element = (
     <label className="label" htmlFor={htmlFor}>
       {label}
       {required ? (
@@ -37,6 +39,23 @@ function Label({ htmlFor, label, required, requiredLabel, optionalLabel }: { htm
         <span className="opt">({optionalLabel})</span>
       ) : null}
     </label>
+  );
+  // "Required" in words as well as the asterisk. It sits outside the <label> so the field's name
+  // stays the plain label text; screen readers hear "required" from aria-required instead.
+  if (!required || !word) return element;
+  return (
+    <div className="label-row">
+      {element}
+      <RequiredWord word={word} />
+    </div>
+  );
+}
+
+export function RequiredWord({ word }: { word: string }) {
+  return (
+    <span className="req-word" aria-hidden="true">
+      {word}
+    </span>
   );
 }
 
@@ -139,6 +158,12 @@ export interface Option {
   label: string;
 }
 
+/** A radio tile option; `icon` is decorative and `tone` adds a choice-tile-<tone> class. */
+export interface TileOption extends Option {
+  icon?: ReactNode;
+  tone?: string;
+}
+
 export function SelectField({ options, placeholder, ...props }: BaseProps & { options: Option[]; placeholder?: string }) {
   const id = useId();
   const { error, value, key } = useField(props.name, props.defaultValue);
@@ -180,7 +205,7 @@ export function SelectField({ options, placeholder, ...props }: BaseProps & { op
 
 export function CheckboxField({ name, label, hint, defaultChecked, required, value = 'on' }: { name: string; label: ReactNode; hint?: ReactNode; defaultChecked?: boolean; required?: boolean; value?: string }) {
   const id = useId();
-  const { state } = useFormContext();
+  const { state, requiredMark } = useFormContext();
   const error = state.fieldErrors?.[name];
   const checked = state.values ? state.values[name] === value || state.values[name]?.split(',').includes(value) : defaultChecked;
   return (
@@ -199,6 +224,11 @@ export function CheckboxField({ name, label, hint, defaultChecked, required, val
         />
         <span>{label}</span>
       </label>
+      {required && requiredMark && (
+        <span className="check-req">
+          <RequiredWord word={requiredMark} />
+        </span>
+      )}
       {hint && (
         <p className="hint" id={`${id}-hint`} style={{ marginLeft: 34 }}>
           {hint}
@@ -222,22 +252,25 @@ export function RadioGroup({
   tiles,
   required,
   requiredKey,
+  className,
 }: {
   name: string;
   legend: string;
-  options: Option[];
+  options: TileOption[];
   defaultValue?: string | null;
   hint?: ReactNode;
   tiles?: boolean;
   required?: boolean;
   requiredKey?: RequiredMessageKey;
+  /** Extra class on the fieldset, e.g. "choice-text" for word tiles. */
+  className?: string;
 }) {
   const id = useId();
-  const { state } = useFormContext();
+  const { state, requiredMark } = useFormContext();
   const error = state.fieldErrors?.[name];
   const value = state.values && name in state.values ? state.values[name] : (defaultValue ?? '');
   return (
-    <fieldset className="choice-group" aria-describedby={describedBy(`${id}-hint`, `${id}-error`, hint, error)} aria-invalid={error ? true : undefined} data-required-key={requiredKey}>
+    <fieldset className={className ? `choice-group ${className}` : 'choice-group'} aria-describedby={describedBy(`${id}-hint`, `${id}-error`, hint, error)} aria-invalid={error ? true : undefined} data-required-key={requiredKey}>
       <legend>
         {legend}
         {required && (
@@ -245,6 +278,7 @@ export function RadioGroup({
             *
           </span>
         )}
+        {required && requiredMark && <RequiredWord word={requiredMark} />}
       </legend>
       {hint && (
         <p className="hint" id={`${id}-hint`}>
@@ -254,9 +288,12 @@ export function RadioGroup({
       <div className={tiles ? 'choice-grid' : 'stack-sm'} key={`${name}-${state.ts ?? 0}`}>
         {options.map((o) =>
           tiles ? (
-            <label className="choice-tile" key={o.value}>
+            <label className={o.tone ? `choice-tile choice-tile-${o.tone}` : 'choice-tile'} key={o.value}>
               <input type="radio" name={name} value={o.value} defaultChecked={value === o.value} required={required} />
-              <span>{o.label}</span>
+              <span>
+                {o.icon}
+                {o.label}
+              </span>
             </label>
           ) : (
             <label className="check" key={o.value}>

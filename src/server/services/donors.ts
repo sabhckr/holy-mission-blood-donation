@@ -22,6 +22,7 @@ import { can, canVerifyRecord, communityCapabilities, publicViewerLevel, type Ac
 import { audit } from './audit';
 import { createAccount, toActor, type ClientMeta, type NewAccount } from './accounts';
 import { validateLocationChain } from './locations';
+import { inServiceDistrict, inServiceDistrictFlag, serviceAreaErrors } from './service-area';
 import { createNotifications } from './notifications';
 import { getSettings } from './settings';
 
@@ -66,7 +67,8 @@ export async function validateDonorProfile(input: DonorProfileInput, executor: E
     if (age < settings.minimumDonorAge) errors.dateOfBirth = 'tooYoung';
     else if (age > 100) errors.dateOfBirth = 'tooOld';
   }
-  Object.assign(errors, await validateLocationChain(input, executor));
+  const locationErrors = await validateLocationChain(input, executor);
+  Object.assign(errors, Object.keys(locationErrors).length ? locationErrors : await serviceAreaErrors(input, executor));
   if (Object.keys(errors).length) throw validationError(errors);
 }
 
@@ -319,8 +321,8 @@ function consentsView(c: ConsentRow): DonorConsentsView {
 
 /**
  * The single definition of "publicly listed": the donor consented to be listed, staff approved
- * the registration, the listing is active and the account is active. Search, public profiles,
- * number reveals, counts and contact requests all use it.
+ * the registration, the listing and the account are active, and the donor's address is in
+ * Lakshmipur. Search, public profiles, number reveals, counts and contact requests all use it.
  */
 export function publiclyListedConditions(): SQL[] {
   return [
@@ -328,11 +330,20 @@ export function publiclyListedConditions(): SQL[] {
     eq(donorProfiles.registrationStatus, 'approved'),
     eq(donorProfiles.status, 'active'),
     eq(users.status, 'active'),
+    inServiceDistrict(donorProfiles.districtId),
   ];
 }
 
-export function isPubliclyListed(row: { donor: Pick<DonorRow, 'status' | 'registrationStatus'>; consent: Pick<ConsentRow, 'listedInSearch'>; accountStatus: string }): boolean {
-  return row.consent.listedInSearch && row.donor.registrationStatus === 'approved' && row.donor.status === 'active' && row.accountStatus === 'active';
+/** Select this as `inServiceArea` next to a donor row so `isPubliclyListed` can check the address. */
+export const donorInServiceArea = () => inServiceDistrictFlag(donorProfiles.districtId);
+
+export function isPubliclyListed(row: {
+  donor: Pick<DonorRow, 'status' | 'registrationStatus'>;
+  consent: Pick<ConsentRow, 'listedInSearch'>;
+  accountStatus: string;
+  inServiceArea: boolean;
+}): boolean {
+  return row.consent.listedInSearch && row.donor.registrationStatus === 'approved' && row.donor.status === 'active' && row.accountStatus === 'active' && row.inServiceArea;
 }
 
 /** Currently marked available (and not expired). */
@@ -402,7 +413,7 @@ function toFacts(row: DonorRow, consent: ConsentRow, accountStatus: typeof users
 export async function getPublicDonorProfile(publicId: string, actor: Actor | null): Promise<DonorView | null> {
   if (!/^[a-z0-9]{6,20}$/.test(publicId)) return null;
   const [row] = await db
-    .select({ donor: donorProfiles, consent: donorConsents, accountStatus: users.status })
+    .select({ donor: donorProfiles, consent: donorConsents, accountStatus: users.status, inServiceArea: donorInServiceArea() })
     .from(donorProfiles)
     .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
     .innerJoin(users, eq(users.id, donorProfiles.userId))
@@ -512,7 +523,7 @@ export async function countListedDonors(filters: Pick<DonorSearchFilters, 'blood
 export async function revealDonorPhone(actor: Actor, publicId: string, meta: ClientMeta = {}) {
   if (actor.status !== 'active') throw forbidden();
   const [row] = await db
-    .select({ donor: donorProfiles, consent: donorConsents, accountStatus: users.status })
+    .select({ donor: donorProfiles, consent: donorConsents, accountStatus: users.status, inServiceArea: donorInServiceArea() })
     .from(donorProfiles)
     .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
     .innerJoin(users, eq(users.id, donorProfiles.userId))

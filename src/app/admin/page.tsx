@@ -1,12 +1,33 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Bell,
+  Building2,
+  CircleCheck,
+  ClipboardList,
+  Droplets,
+  HeartPulse,
+  History,
+  Search,
+  ShieldCheck,
+  Siren,
+  UserRoundCheck,
+  Users,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { requirePermission } from '@/server/auth/current';
 import { getExternalProvider } from '@/server/notify/providers';
 import { can, type PlatformPermission } from '@/server/policy';
-import { platformStats } from '@/server/services/admin';
+import { duplicateCandidates, platformStats } from '@/server/services/admin';
 import { recentStaffActivity, staffDonorStats } from '@/server/services/donor-admin';
 import { AdminAction } from '@/components/admin/AdminAction';
+import { AdminPageHead, SectionTitle } from '@/components/admin/AdminUi';
+import { ADMIN_ICONS } from '@/components/admin/icons';
+import { statusIcon, statusTone } from '@/components/admin/StatusBadges';
 import { Alert, EmptyState, Stat } from '@/components/ui';
 import { runExpiryAction, sendQueuedAction } from './actions';
 
@@ -15,10 +36,18 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.admin.overview.title, robots: { index: false } };
 }
 
+/** Duplicate candidates are capped at this many by the service. */
+const DUPLICATE_CAP = 100;
+
 export default async function AdminOverviewPage() {
   const actor = await requirePermission('/admin', 'overview.view');
   const { t, n, dateTime } = await getI18n();
-  const [s, d, activity] = await Promise.all([platformStats(actor), staffDonorStats(actor), recentStaffActivity(actor, 12)]);
+  const [s, d, activity, duplicates] = await Promise.all([
+    platformStats(actor),
+    staffDonorStats(actor),
+    recentStaffActivity(actor, 12),
+    can(actor, 'duplicates.review') ? duplicateCandidates(actor) : Promise.resolve(null),
+  ]);
   const a = t.admin.overview;
   const actionLabels = t.admin.activity.actions as Record<string, string>;
   const providerOn = !!getExternalProvider();
@@ -26,193 +55,299 @@ export default async function AdminOverviewPage() {
   const shownInSearch = s.byGroup.reduce((sum, g) => sum + g.n, 0);
   const roleLabel = (role: string | null) => (role === 'admin' || role === 'moderator' ? t.common.roles[role] : null);
 
-  /** A figure that links to its queue only when the viewer may open that queue. */
-  const queue = (value: number, label: string, href: string, permission: PlatformPermission) =>
-    can(actor, permission) ? (
-      <Link className="card-link" href={href}>
-        <Stat value={n(value)} label={label} />
-      </Link>
-    ) : (
-      <Stat value={n(value)} label={label} />
+  /** Only queues the viewer may open are shown; each card links to the filtered list. */
+  const queues: { key: string; value: number; label: string; href: string; icon: LucideIcon; permission: PlatformPermission; capped?: boolean }[] = [
+    { key: 'donors', value: d.pending, label: a.pendingDonors, href: '/admin/donors?registration=pending', icon: UserRoundCheck, permission: 'donors.review' },
+    { key: 'verify', value: s.records.pending + s.donors.pendingVerification, label: a.verificationQueue, href: '/admin/verifications', icon: ADMIN_ICONS.verifications, permission: 'verifications.review' },
+    { key: 'reports', value: s.queues.openReports, label: a.openReports, href: '/admin/reports', icon: ADMIN_ICONS.reports, permission: 'reports.handle' },
+    { key: 'communities', value: s.queues.pendingCommunities, label: a.pendingCommunities, href: '/admin/communities?status=pending', icon: ADMIN_ICONS.communities, permission: 'communities.review' },
+    { key: 'duplicates', value: duplicates?.length ?? 0, label: a.duplicatesQueue, href: '/admin/duplicates', icon: ADMIN_ICONS.duplicates, permission: 'duplicates.review', capped: (duplicates?.length ?? 0) >= DUPLICATE_CAP },
+    { key: 'deletions', value: s.queues.pendingDeletions, label: a.pendingDeletions, href: '/admin/deletions', icon: ADMIN_ICONS.deletions, permission: 'deletions.process' },
+  ];
+  const visibleQueues = queues.filter((q) => can(actor, q.permission));
+  const waiting = visibleQueues.reduce((sum, q) => sum + q.value, 0);
+
+  /** A count row that links to its filtered list only when the viewer may open it. */
+  const countRow = (key: string, label: string, value: number, opts: { href?: string; permission?: PlatformPermission; icon?: LucideIcon; tone?: string } = {}) => {
+    const Icon = opts.icon;
+    const inner = (
+      <>
+        {Icon && <Icon size={16} className={`tone-${opts.tone ?? 'neutral'}`} aria-hidden="true" />}
+        <span>{label}</span>
+      </>
     );
+    const linked = opts.href && (!opts.permission || can(actor, opts.permission));
+    return (
+      <li key={key}>
+        {linked ? (
+          <Link className="count-label" href={opts.href!}>
+            {inner}
+          </Link>
+        ) : (
+          <span className="count-label">{inner}</span>
+        )}
+        <span className="count-value">{n(value)}</span>
+      </li>
+    );
+  };
 
   return (
     <>
-      <header className="stack-sm">
-        <h1>{a.title}</h1>
-        <p className="muted">{a.intro}</p>
-      </header>
+      <AdminPageHead icon={ADMIN_ICONS.overview} title={a.title} intro={a.intro} />
 
       <section className="stack" aria-labelledby="queues">
-        <h2 id="queues">{a.queuesTitle}</h2>
-        <div className="grid grid-3">
-          {queue(d.pending, a.pendingDonors, '/admin/donors?registration=pending', 'donors.review')}
-          {queue(s.records.pending + s.donors.pendingVerification, a.verificationQueue, '/admin/verifications', 'verifications.review')}
-          {queue(s.queues.openReports, a.openReports, '/admin/reports', 'reports.handle')}
-          {queue(s.queues.pendingCommunities, a.pendingCommunities, '/admin/communities?status=pending', 'communities.review')}
-          {queue(s.queues.pendingDeletions, a.pendingDeletions, '/admin/deletions', 'deletions.process')}
-        </div>
-      </section>
-
-      <section className="stack" aria-labelledby="donors">
-        <h2 id="donors">{a.donorsTitle}</h2>
-        <div className="grid grid-4">
-          <Stat value={n(d.total)} label={a.donorsTotal} />
-          {queue(d.pending, t.common.registrationStatus.pending, '/admin/donors?registration=pending', 'donors.review')}
-          {queue(d.approved, t.common.registrationStatus.approved, '/admin/donors?registration=approved', 'donors.review')}
-          {queue(d.rejected, t.common.registrationStatus.rejected, '/admin/donors?registration=rejected', 'donors.review')}
-        </div>
-        <h3>{a.listingTitle}</h3>
-        <div className="grid grid-3">
-          <Stat value={n(shownInSearch)} label={a.shownInSearch} note={a.shownInSearchNote} />
-          <Stat value={n(d.deactivated)} label={a.pausedOrDeactivated} />
-          {queue(d.removed, a.removed, '/admin/donors?listing=removed', 'donors.review')}
-        </div>
-      </section>
-
-      <section className="stack" aria-labelledby="availability">
-        <h2 id="availability">{a.availabilityTitle}</h2>
-        <p className="muted">{a.availabilityIntro}</p>
-        <div className="grid grid-4">
-          <Stat value={n(d.available)} label={t.common.availability.available} />
-          <Stat value={n(d.unavailable)} label={t.common.availability.unavailable} />
-          <Stat value={n(d.unknown)} label={t.common.availability.unknown} />
-          <Stat value={n(d.staffSet)} label={a.staffSet} note={a.staffSetNote} />
-        </div>
-        <p className="small muted">{t.common.availability.explain}</p>
-      </section>
-
-      <section className="stack" aria-labelledby="verification">
-        <h2 id="verification">{a.verificationTitle}</h2>
-        <div className="grid grid-2">
-          <Stat value={n(s.donors.verified)} label={a.verifiedProfiles} note={a.unverifiedNote} />
-          <Stat value={n(s.queues.users)} label={a.usersTotal} />
-        </div>
-        <h3>{a.byGroupTitle}</h3>
-        {s.byGroup.length === 0 ? (
-          <p className="muted">{t.admin.none}</p>
-        ) : (
-          <div className="cluster">
-            {s.byGroup.map((g) => (
-              <span key={g.bloodGroup} className="badge badge-neutral">
-                {g.bloodGroup}: {n(g.n)}
-              </span>
-            ))}
+        <div className="section-head" style={{ marginBottom: 0 }}>
+          <div>
+            <SectionTitle id="queues" icon={ClipboardList}>
+              {a.queuesTitle}
+            </SectionTitle>
+            <p>{waiting > 0 ? a.attentionIntro : a.nothingWaiting}</p>
           </div>
-        )}
-      </section>
-
-      <section className="stack" aria-labelledby="records">
-        <h2 id="records">{a.recordsTitle}</h2>
-        <div className="grid grid-4">
-          <Stat value={n(s.records.verified)} label={a.recordsVerified} />
-          <Stat value={n(s.records.selfReported)} label={a.recordsSelfReported} />
-          <Stat value={n(s.records.pending)} label={a.recordsPending} />
-          <Stat value={n(s.records.rejected)} label={a.recordsRejected} />
         </div>
-        <Alert tone="warning">{a.recordsNote}</Alert>
+        <ul className="attention-grid">
+          {visibleQueues.map((q) => (
+            <li key={q.key}>
+              <Link className={`attention-card ${q.value > 0 ? 'is-waiting' : 'is-clear'}`} href={q.href}>
+                <span className="attention-icon">
+                  <q.icon size={22} aria-hidden="true" />
+                </span>
+                <span className="attention-count">{q.capped ? `${n(DUPLICATE_CAP)}+` : n(q.value)}</span>
+                <span className="attention-label">{q.label}</span>
+                <span className="attention-cta">
+                  {q.value > 0 ? (
+                    <>
+                      {a.queueOpen}
+                      <ArrowRight size={15} aria-hidden="true" />
+                    </>
+                  ) : (
+                    <>
+                      <CircleCheck size={15} aria-hidden="true" />
+                      {a.queueClear}
+                    </>
+                  )}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      <section className="grid grid-2">
-        <div className="card stack-sm">
-          <h2>{a.organisationsTitle}</h2>
-          <div className="grid grid-2">
-            {queue(s.queues.pendingCommunities, a.pendingCommunities, '/admin/communities?status=pending', 'communities.review')}
-            {queue(approvedOrganisations, a.activeOrganisations, '/admin/communities?status=approved', 'communities.review')}
+      <section className="stack" aria-labelledby="figures">
+        <SectionTitle id="figures" icon={HeartPulse}>
+          {a.keyFiguresTitle}
+        </SectionTitle>
+        <div className="admin-stats">
+          <Stat icon={<Users size={20} aria-hidden="true" />} value={n(d.total)} label={a.donorsTotal} />
+          <Stat icon={<Search size={20} aria-hidden="true" />} value={n(shownInSearch)} label={a.shownInSearch} note={a.shownInSearchNote} />
+          <Stat icon={<HeartPulse size={20} aria-hidden="true" />} value={n(d.available)} label={t.common.availability.available} />
+          <Stat icon={<BadgeCheck size={20} aria-hidden="true" />} value={n(s.donors.verified)} label={a.verifiedProfiles} note={a.unverifiedNote} />
+          <Stat icon={<Building2 size={20} aria-hidden="true" />} value={n(approvedOrganisations)} label={a.activeOrganisations} />
+          <Stat icon={<ShieldCheck size={20} aria-hidden="true" />} value={n(s.queues.users)} label={a.usersTotal} />
+        </div>
+      </section>
+
+      <section className="stack" aria-labelledby="breakdown">
+        <SectionTitle id="breakdown" icon={Droplets}>
+          {a.breakdownTitle}
+        </SectionTitle>
+        <div className="breakdown-grid">
+          <div className="card card-tight breakdown-card">
+            <h3>
+              <Users size={18} aria-hidden="true" />
+              {a.donorsTitle}
+            </h3>
+            <ul className="count-list">
+              {(['pending', 'approved', 'rejected'] as const).map((st) =>
+                countRow(st, t.common.registrationStatus[st], d[st], {
+                  href: `/admin/donors?registration=${st}`,
+                  permission: 'donors.review',
+                  icon: statusIcon.registration(st),
+                  tone: statusTone.registration(st),
+                }),
+              )}
+            </ul>
+            <h4>{a.listingTitle}</h4>
+            <ul className="count-list">
+              {countRow('listed', a.shownInSearch, shownInSearch, { icon: statusIcon.listing('active'), tone: 'success' })}
+              {countRow('paused', a.pausedOrDeactivated, d.deactivated, { icon: statusIcon.listing('paused') })}
+              {countRow('removed', a.removed, d.removed, { href: '/admin/donors?listing=removed', permission: 'donors.review', icon: statusIcon.listing('removed'), tone: 'danger' })}
+            </ul>
           </div>
-          <h3>{a.communitiesTitle}</h3>
-          {s.communitiesByStatus.length === 0 ? (
-            <p className="muted">{t.admin.none}</p>
-          ) : (
-            <dl className="dl">
-              {s.communitiesByStatus.map((c) => (
-                <div key={c.status} style={{ display: 'contents' }}>
-                  <dt>{t.common.communityStatus[c.status]}</dt>
-                  <dd>{n(c.n)}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-        <div className="card stack-sm">
-          <h2>{a.requestsTitle}</h2>
-          {s.requestsByStatus.length === 0 ? (
-            <p className="muted">{t.admin.none}</p>
-          ) : (
-            <dl className="dl">
-              {s.requestsByStatus.map((r) => (
-                <div key={r.status} style={{ display: 'contents' }}>
-                  <dt>{t.common.requestStatus[r.status]}</dt>
-                  <dd>{n(r.n)}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
+
+          <div className="card card-tight breakdown-card">
+            <h3>
+              <HeartPulse size={18} aria-hidden="true" />
+              {a.availabilityTitle}
+            </h3>
+            <p className="hint">{a.availabilityIntro}</p>
+            <ul className="count-list">
+              {countRow('available', t.common.availability.available, d.available, { icon: statusIcon.stated('available'), tone: 'success' })}
+              {countRow('unavailable', t.common.availability.unavailable, d.unavailable, { icon: statusIcon.stated('unavailable') })}
+              {countRow('unknown', t.common.availability.unknown, d.unknown, { icon: statusIcon.stated('unknown'), tone: 'warning' })}
+              {countRow('staff', a.staffSet, d.staffSet, { icon: ADMIN_ICONS.users, tone: 'info' })}
+            </ul>
+            <p className="small muted" style={{ marginTop: 'var(--space-2)', marginBottom: 0 }}>
+              {a.staffSetNote} {t.common.availability.explain}
+            </p>
+          </div>
+
+          <div className="card card-tight breakdown-card">
+            <h3>
+              <Droplets size={18} aria-hidden="true" />
+              {a.byGroupTitle}
+            </h3>
+            {s.byGroup.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                {t.admin.none}
+              </p>
+            ) : (
+              <ul className="group-counts">
+                {s.byGroup.map((g) => (
+                  <li key={g.bloodGroup}>
+                    <span className="group-name">{g.bloodGroup}</span>
+                    <span className="group-n">{n(g.n)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="card card-tight breakdown-card">
+            <h3>
+              <BadgeCheck size={18} aria-hidden="true" />
+              {a.recordsTitle}
+            </h3>
+            <ul className="count-list">
+              {countRow('rv', a.recordsVerified, s.records.verified, { icon: statusIcon.verification('verified'), tone: 'info' })}
+              {countRow('rs', a.recordsSelfReported, s.records.selfReported, { icon: statusIcon.verification('unverified') })}
+              {countRow('rp', a.recordsPending, s.records.pending, { href: '/admin/verifications', permission: 'verifications.review', icon: statusIcon.verification('pending'), tone: 'warning' })}
+              {countRow('rr', a.recordsRejected, s.records.rejected, { icon: statusIcon.verification('rejected'), tone: 'danger' })}
+            </ul>
+            <p className="small muted" style={{ marginTop: 'var(--space-2)', marginBottom: 0 }}>
+              {a.recordsNote}
+            </p>
+          </div>
+
+          <div className="card card-tight breakdown-card">
+            <h3>
+              <Building2 size={18} aria-hidden="true" />
+              {a.communitiesTitle}
+            </h3>
+            {s.communitiesByStatus.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                {t.admin.none}
+              </p>
+            ) : (
+              <ul className="count-list">
+                {s.communitiesByStatus.map((c) =>
+                  countRow(c.status, t.common.communityStatus[c.status], c.n, {
+                    href: `/admin/communities?status=${c.status}`,
+                    permission: 'communities.review',
+                    icon: statusIcon.community(c.status),
+                    tone: statusTone.community(c.status),
+                  }),
+                )}
+              </ul>
+            )}
+          </div>
+
+          <div className="card card-tight breakdown-card">
+            <h3>
+              <Siren size={18} aria-hidden="true" />
+              {a.requestsTitle}
+            </h3>
+            {s.requestsByStatus.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                {t.admin.none}
+              </p>
+            ) : (
+              <ul className="count-list">
+                {s.requestsByStatus.map((r) =>
+                  countRow(r.status, t.common.requestStatus[r.status], r.n, {
+                    href: `/admin/requests?status=${r.status}`,
+                    permission: 'requests.view',
+                    icon: statusIcon.request(r.status),
+                    tone: statusTone.request(r.status),
+                  }),
+                )}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
 
       <section className="stack" aria-labelledby="activity">
-        <h2 id="activity">{t.admin.activity.title}</h2>
-        <p className="muted">{t.admin.activity.intro}</p>
+        <div className="section-head" style={{ marginBottom: 0 }}>
+          <div>
+            <SectionTitle id="activity" icon={History}>
+              {t.admin.activity.title}
+            </SectionTitle>
+            <p>{t.admin.activity.intro}</p>
+          </div>
+          {can(actor, 'audit.view') && (
+            <Link className="section-link" href="/admin/audit">
+              {t.admin.activity.openAudit}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          )}
+        </div>
         {activity.length === 0 ? (
           <EmptyState title={t.admin.activity.empty} />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">{t.admin.activity.when}</th>
-                  <th scope="col">{t.admin.activity.who}</th>
-                  <th scope="col">{t.admin.activity.what}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activity.map((row) => {
-                  const role = roleLabel(row.actorRole);
-                  const href = row.targetType === 'donor' && row.targetId && can(actor, 'donors.review') ? `/admin/donors/${row.targetId}` : null;
-                  const label = actionLabels[row.action] ?? row.action;
-                  return (
-                    <tr key={row.id}>
-                      <td>{dateTime(row.createdAt)}</td>
-                      <td>
+          <ul className="activity-list">
+            {activity.map((row) => {
+              const role = roleLabel(row.actorRole);
+              const href = row.targetType === 'donor' && row.targetId && can(actor, 'donors.review') ? `/admin/donors/${row.targetId}` : null;
+              const label = actionLabels[row.action] ?? row.action;
+              return (
+                <li key={row.id}>
+                  <span className="activity-dot">
+                    <History size={16} aria-hidden="true" />
+                  </span>
+                  <div className="activity-body">
+                    <p className="activity-what">{href ? <Link href={href}>{label}</Link> : label}</p>
+                    <p className="activity-meta">
+                      <span>
                         {row.actorName ?? t.admin.activity.system}
-                        {role && <span className="small muted"> · {role}</span>}
-                      </td>
-                      <td>{href ? <Link href={href}>{label}</Link> : label}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {can(actor, 'audit.view') && (
-          <p>
-            <Link href="/admin/audit">{t.admin.activity.openAudit}</Link>
-          </p>
+                        {role && ` (${role})`}
+                      </span>
+                      <span>{dateTime(row.createdAt)}</span>
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
 
       <section className="card stack" aria-labelledby="deliveries">
-        <h2 id="deliveries">{a.deliveriesTitle}</h2>
+        <h2 id="deliveries" className="admin-section-title">
+          <Bell size={20} aria-hidden="true" />
+          {a.deliveriesTitle}
+        </h2>
         <Alert tone={providerOn ? 'info' : 'warning'}>{providerOn ? a.providerConfigured : a.providerNotConfigured}</Alert>
-        <dl className="dl">
-          <dt>{a.deliveriesSent}</dt>
-          <dd>{n(s.queues.deliveriesSent)}</dd>
-          <dt>{a.deliveriesFailed}</dt>
-          <dd>{n(s.queues.deliveriesFailed)}</dd>
-          <dt>{a.deliveriesNotConfigured}</dt>
-          <dd>{n(s.queues.deliveriesNotConfigured)}</dd>
-        </dl>
+        <ul className="count-list">
+          {countRow('sent', a.deliveriesSent, s.queues.deliveriesSent, { icon: CircleCheck, tone: 'success' })}
+          {countRow('failed', a.deliveriesFailed, s.queues.deliveriesFailed, { icon: statusIcon.verification('rejected'), tone: 'danger' })}
+          {countRow('nc', a.deliveriesNotConfigured, s.queues.deliveriesNotConfigured, { icon: statusIcon.stated('unknown'), tone: 'warning' })}
+        </ul>
       </section>
 
       {can(actor, 'settings.manage') && (
         <section className="card stack" aria-labelledby="maintenance">
-          <h2 id="maintenance">{a.maintenanceTitle}</h2>
-          <p className="muted">{a.maintenanceIntro}</p>
-          <div className="grid grid-2">
-            <AdminAction action={runExpiryAction} hidden={{}} submit={a.runExpiry} pending={t.common.actions.submitting} />
-            <AdminAction action={sendQueuedAction} hidden={{}} submit={a.sendQueued} pending={t.common.actions.submitting} />
+          <div>
+            <h2 id="maintenance" className="admin-section-title">
+              <Wrench size={20} aria-hidden="true" />
+              {a.maintenanceTitle}
+            </h2>
+            <p className="hint" style={{ marginTop: 'var(--space-1)' }}>
+              {a.maintenanceIntro}
+            </p>
+          </div>
+          <div className="action-split">
+            <AdminAction action={runExpiryAction} hidden={{}} submit={a.runExpiry} pending={t.common.actions.submitting} size="md" />
+            <AdminAction action={sendQueuedAction} hidden={{}} submit={a.sendQueued} pending={t.common.actions.submitting} size="md" />
           </div>
         </section>
       )}

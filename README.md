@@ -10,22 +10,24 @@ blood group and area, post requests, and get help from local blood donation orga
 This is a community coordination tool. It is **not** a hospital or blood bank, and it never
 decides whether someone is medically eligible to donate.
 
-**Where Holy Mission operates vs. who can join.** Holy Mission's own official operating area is
-currently **Lakshmipur district** (managed by admins in Admin → Operating areas). The platform
-itself is nationwide: donors and blood donation organisations from every district can register.
-Registering never makes an organisation a Holy Mission branch. See [docs/STATUSES.md](docs/STATUSES.md)
+**Lakshmipur only.** Holy Mission Blood Donation works in **Lakshmipur district** only. Donor
+registration, donor search, blood requests and organisations are limited to Lakshmipur and its
+five upazilas, and the services enforce this on the server (`src/server/services/service-area.ts`),
+not just in the forms. Records saved before this rule are kept but hidden from the public and
+flagged for staff; `npm run report:service-area` counts them (read-only). Registering never makes
+an organisation a Holy Mission branch. See [docs/STATUSES.md](docs/STATUSES.md)
 for how operating area, donor area, registration review, listing, availability, verification and
 medical eligibility are kept apart.
 
 ## What is included
 
-- **Public site** – home with the slogan, quick donor search, how it works, emergency advice,
-  live (database) numbers, open requests and approved communities; donor search with all eight
-  blood groups, division/district/upazila/area filters, donor-confirmed availability,
+- **Public site** – a simple home (slogan, Lakshmipur notice, donor search by group and upazila,
+  the three main actions, privacy and safety notes); donor search with all eight blood groups,
+  upazila and area filters, donor-confirmed availability,
   verification filter, sorting and pagination; privacy-safe donor profiles; community directory
   and pages; blood request board; help, contact, privacy and terms pages.
-- **No-donor fallback** – when a search finds nobody: counts in the upazila, district, division
-  and whole country with one-click wider searches, approved communities serving the area, a
+- **No-donor fallback** – when a search finds nobody: counts in the upazila and the whole of
+  Lakshmipur with one-click wider searches, approved communities serving the area, a
   prefilled blood request, and hospital/blood bank advice.
 - **Donors** – registration with explicit per-category consent, profile editing (identity
   changes reset verification), privacy controls, availability confirmation that expires,

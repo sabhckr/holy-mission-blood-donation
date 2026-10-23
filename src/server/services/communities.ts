@@ -31,6 +31,7 @@ import {
 import type { ClientMeta } from './accounts';
 import { audit } from './audit';
 import { descendantIds, validateLocationChain } from './locations';
+import { getServiceArea, inServiceDistrict, withinServiceArea } from './service-area';
 import { createNotifications, type NewNotification } from './notifications';
 import { donationStatsFor, donorAvailability } from './donors';
 
@@ -61,11 +62,14 @@ export interface CommunityInput {
 
 async function validateCommunityInput(input: CommunityInput, executor: Executor) {
   const errors = await validateLocationChain({ divisionId: input.divisionId, districtId: input.districtId }, executor);
+  // Organisations register from Lakshmipur and serve Lakshmipur only.
+  if (!errors.districtId && input.districtId !== (await getServiceArea(executor)).districtId) errors.districtId = 'outsideServiceArea';
   if (input.serviceAreaIds.length === 0) errors.serviceAreaIds = 'required';
   else if (input.serviceAreaIds.length > 30) errors.serviceAreaIds = 'tooLong';
   else {
     const rows = await executor.select().from(locations).where(inArray(locations.id, input.serviceAreaIds));
     if (rows.length !== new Set(input.serviceAreaIds).size || rows.some((r) => !r.isActive)) errors.serviceAreaIds = 'invalidLocation';
+    else if (!(await withinServiceArea(input.serviceAreaIds, executor))) errors.serviceAreaIds = 'outsideServiceArea';
   }
   const year = new Date().getFullYear();
   if (input.foundedYear !== null && (input.foundedYear < 1950 || input.foundedYear > year)) errors.foundedYear = 'outOfRange';
@@ -183,6 +187,8 @@ export async function reviewCommunity(
       suspended: ['approved'],
     };
     if (!allowed[decision].includes(community.status)) throw new AppError('invalid_state');
+    // An organisation based outside Lakshmipur cannot be approved (it can still be rejected or suspended).
+    if (decision === 'approved' && community.districtId !== (await getServiceArea(tx)).districtId) throw new AppError('invalid_state', 'outside_service_area');
     await tx
       .update(communities)
       .set({ status: decision, statusReason: reason, reviewedByUserId: actor.userId, reviewedAt: new Date(), updatedAt: new Date() })
@@ -244,7 +250,7 @@ export function publicCommunity(c: Community) {
 }
 
 export async function listCommunities(filters: { q?: string | null; divisionId?: number | null; districtId?: number | null; page?: number }) {
-  const conditions: SQL[] = [eq(communities.status, 'approved')];
+  const conditions: SQL[] = [eq(communities.status, 'approved'), inServiceDistrict(communities.districtId)];
   if (filters.divisionId) conditions.push(eq(communities.divisionId, filters.divisionId));
   if (filters.districtId) {
     conditions.push(
@@ -279,6 +285,9 @@ export async function getPublicCommunity(slug: string, actor: Actor | null) {
   const ctx = await getCommunityContext(actor, { slug });
   if (!ctx) return null;
   if (ctx.community.status !== 'approved' && !ctx.caps.has('view_dashboard')) return null;
+  // Organisations based outside Lakshmipur are not part of the public directory.
+  const inServiceArea = ctx.community.districtId === (await getServiceArea()).districtId;
+  if (!inServiceArea && !ctx.caps.has('view_dashboard')) return null;
   const [areas, counts] = await Promise.all([serviceAreasFor([ctx.community.id]), memberCounts([ctx.community.id])]);
   return {
     community: { ...publicCommunity(ctx.community), serviceAreas: areas.get(ctx.community.id) ?? [], memberCount: counts.get(ctx.community.id) ?? 0 },
@@ -294,7 +303,7 @@ export async function getPublicCommunity(slug: string, actor: Actor | null) {
 export async function communitiesServingArea(area: { divisionId?: number | null; districtId?: number | null; upazilaId?: number | null }, excludeId?: string) {
   const ids = [area.upazilaId, area.districtId, area.divisionId].filter((v): v is number => typeof v === 'number' && v > 0);
   if (ids.length === 0) return [];
-  const conds: SQL[] = [eq(communities.status, 'approved'), inArray(communityServiceAreas.locationId, ids)];
+  const conds: SQL[] = [eq(communities.status, 'approved'), inServiceDistrict(communities.districtId), inArray(communityServiceAreas.locationId, ids)];
   if (excludeId) conds.push(ne(communities.id, excludeId));
   const rows = await db
     .selectDistinct({ community: communities })
@@ -463,6 +472,7 @@ export async function findDonorsForCommunity(
     eq(donorProfiles.registrationStatus, 'approved'),
     eq(donorProfiles.status, 'active'),
     eq(users.status, 'active'),
+    inServiceDistrict(donorProfiles.districtId),
     inAreaCondition(areaIds),
   ];
   if (filters.bloodGroup) conditions.push(eq(donorProfiles.bloodGroup, filters.bloodGroup));
@@ -529,7 +539,7 @@ export async function revealDonorPhoneForCommunity(actor: Actor, communityId: st
     .from(donorProfiles)
     .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
     .innerJoin(users, eq(users.id, donorProfiles.userId))
-    .where(and(eq(donorProfiles.publicId, donorPublicId), inAreaCondition(areaIds)));
+    .where(and(eq(donorProfiles.publicId, donorPublicId), inServiceDistrict(donorProfiles.districtId), inAreaCondition(areaIds)));
   if (!row || !row.consent.allowCoordinatorContact || row.donor.registrationStatus !== 'approved' || row.donor.status !== 'active' || row.accountStatus !== 'active') throw notFound();
   if (row.consent.phoneVisibility === 'private') throw forbidden();
   await audit(db, { actor, action: 'donor.phone_revealed', targetType: 'donor', targetId: row.donor.id, communityId, metadata: { context: 'community_finder' }, ipHash: meta.ipHash });

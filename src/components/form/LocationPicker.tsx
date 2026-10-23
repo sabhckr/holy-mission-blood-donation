@@ -1,7 +1,9 @@
 'use client';
 
+import { MapPin } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useFormContext } from './ActionForm';
+import { RequiredWord } from './fields';
 
 /** [id, parentId (0 for divisions), name in the current language, level: 0 division | 1 district | 2 upazila] */
 export type CompactLocation = [number, number, string, 0 | 1 | 2];
@@ -51,7 +53,7 @@ function LocationPickerInner({
   anyOption = false,
 }: LocationPickerProps) {
   const id = useId();
-  const { state } = useFormContext();
+  const { state, requiredMark } = useFormContext();
   const fromState = (n: string) => (state.values && n in state.values ? Number(state.values[n]) || null : undefined);
   const [division, setDivision] = useState<number | null>(fromState(names.division) ?? defaults?.divisionId ?? null);
   const [district, setDistrict] = useState<number | null>(fromState(names.district) ?? defaults?.districtId ?? null);
@@ -73,16 +75,26 @@ function LocationPickerInner({
     const name = names[level];
     const error = err(name);
     const fieldId = `${id}-${level}`;
+    const label = (
+      <label className="label" htmlFor={fieldId}>
+        {labels[level]}
+        {required[level] && (
+          <span className="req" aria-hidden="true">
+            *
+          </span>
+        )}
+      </label>
+    );
     return (
       <div className="field">
-        <label className="label" htmlFor={fieldId}>
-          {labels[level]}
-          {required[level] && (
-            <span className="req" aria-hidden="true">
-              *
-            </span>
-          )}
-        </label>
+        {required[level] && requiredMark ? (
+          <div className="label-row">
+            {label}
+            <RequiredWord word={requiredMark} />
+          </div>
+        ) : (
+          label
+        )}
         <select
           id={fieldId}
           className="select"
@@ -110,6 +122,34 @@ function LocationPickerInner({
       </div>
     );
   };
+
+  // One division and one district (Lakshmipur only): submit them as fixed values, show the district
+  // as text and ask only for the upazila. The server checks the address either way.
+  const allDistricts = locations.filter((l) => l[3] === 1);
+  if (divisions.length === 1 && allDistricts.length === 1) {
+    const [fixedDivision, fixedDistrict] = [divisions[0], allDistricts[0]];
+    const fixedUpazilas = locations.filter((l) => l[3] === 2 && l[1] === fixedDistrict[0]);
+    const placeError = err(names.district) ?? err(names.division);
+    return (
+      <div className="field-row">
+        <input type="hidden" name={names.division} value={fixedDivision[0]} />
+        <input type="hidden" name={names.district} value={fixedDistrict[0]} />
+        <div className="field">
+          <span className="label">{labels.district}</span>
+          <p className="fixed-place" aria-describedby={placeError ? `${id}-district-error` : undefined}>
+            <MapPin size={18} aria-hidden="true" />
+            {fixedDistrict[2]}
+          </p>
+          {placeError && (
+            <p className="error-text" id={`${id}-district-error`}>
+              {placeError}
+            </p>
+          )}
+        </div>
+        {showUpazila && select('upazila', upazila, fixedUpazilas, setUpazila, labels.chooseUpazila)}
+      </div>
+    );
+  }
 
   return (
     <div className="field-row">

@@ -15,7 +15,7 @@ import {
   reviewCommunity,
   reviewMembership,
 } from '@/server/services/communities';
-import { makeAdmin, makeCommunity, makeDonor, makeUser, resetDb } from './helpers';
+import { makeAdmin, makeCommunity, makeDonor, makeUser, moveOutsideServiceArea, resetDb } from './helpers';
 
 beforeEach(resetDb);
 
@@ -80,7 +80,7 @@ describe('donor finder', () => {
     const inArea = await makeDonor({ upazila: 'Raipur' });
     await makeDonor({ upazila: 'Ramganj' }); // same district, outside the service area
     await makeDonor({ upazila: 'Raipur', consents: { allowCoordinatorContact: false } });
-    await makeDonor({ district: 'Dhaka', upazila: 'Savar' });
+    await moveOutsideServiceArea('donor', (await makeDonor()).donor.id, 'Dhaka', 'Savar'); // saved before the Lakshmipur-only rule
     const r = await findDonorsForCommunity(leader.actor, c.id, {});
     expect(r.items.map((d) => d.publicId)).toEqual([inArea.donor.publicId]);
     expect(r.items[0].name).toBe('Rakib Hasan'); // coordinators see names allowed for signed-in users

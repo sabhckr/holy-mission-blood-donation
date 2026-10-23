@@ -14,6 +14,8 @@ export interface ClientValidationMessages {
   passwordMismatch: string;
   invalidLocation: string;
   invalidBloodGroup: string;
+  /** Visible word shown beside the "*" of required fields (e.g. "আবশ্যক"). */
+  requiredMark?: string;
 }
 
 /** Keys a field may name (data-required-key) to show a more specific "missing" message. */
@@ -29,5 +31,6 @@ export function clientValidationMessages(t: Messages): ClientValidationMessages 
     passwordMismatch: v.passwordMismatch,
     invalidLocation: v.invalidLocation,
     invalidBloodGroup: v.invalidBloodGroup,
+    requiredMark: t.common.states.required,
   };
 }

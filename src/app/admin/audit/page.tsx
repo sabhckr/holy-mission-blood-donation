@@ -5,7 +5,9 @@ import { getI18n } from '@/i18n/server';
 import { requirePermission } from '@/server/auth/current';
 import { isIsoDate } from '@/server/domain/dates';
 import { searchAuditLog } from '@/server/services/admin';
-import { EmptyState, Pagination } from '@/components/ui';
+import { AdminEmpty, AdminPageHead, FilterBar, FilterSearch } from '@/components/admin/AdminUi';
+import { ADMIN_ICONS } from '@/components/admin/icons';
+import { Pagination } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -44,91 +46,91 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
     page: f.page ?? 1,
   });
   const a = t.admin.audit;
-  const field = (name: 'action' | 'targetType' | 'targetId' | 'actorId', label: string, hint?: string) => (
+  const actionLabels = t.admin.activity.actions as Record<string, string>;
+  const roleLabel = (role: string | null) => (role === 'admin' || role === 'moderator' || role === 'user' ? t.common.roles[role] : role);
+  const filtered = !!(f.action || f.targetType || f.targetId || f.actorId || f.from || f.to);
+  const date = (name: 'from' | 'to', label: string) => (
     <div className="field">
       <label className="label" htmlFor={`a-${name}`}>
         {label}
       </label>
-      {hint && <p className="hint">{hint}</p>}
-      <input id={`a-${name}`} className="input" name={name} defaultValue={f[name] ?? ''} maxLength={64} />
+      <input id={`a-${name}`} className="input" type="date" name={name} defaultValue={f[name] ?? ''} />
     </div>
   );
   return (
     <>
-      <header className="stack-sm">
-        <h1>{a.title}</h1>
-        <p className="muted">{a.intro}</p>
-      </header>
-      <form method="get" action="/admin/audit" className="card card-tight form">
-        <div className="field-row">
-          {field('action', a.action, a.actionHint)}
-          {field('targetType', a.targetType)}
-          {field('targetId', a.targetId)}
-          {field('actorId', a.actorId)}
+      <AdminPageHead icon={ADMIN_ICONS.audit} title={a.title} intro={a.intro} />
+      <FilterBar action="/admin/audit" label={t.admin.filtersLabel} submit={t.admin.filter} clear={t.common.actions.clearFilters} active={filtered}>
+        <FilterSearch id="a-action" name="action" label={a.action} hint={a.actionHint} value={f.action} type="text" icon={false} />
+        <FilterSearch id="a-targetType" name="targetType" label={a.targetType} value={f.targetType} type="text" wide={false} icon={false} />
+        <FilterSearch id="a-targetId" name="targetId" label={a.targetId} value={f.targetId} type="text" wide={false} icon={false} />
+        <FilterSearch id="a-actorId" name="actorId" label={a.actorId} value={f.actorId} type="text" icon={false} />
+        {date('from', a.from)}
+        {date('to', a.to)}
+      </FilterBar>
+      <section className="stack" aria-labelledby="audit-results">
+        <div className="results-bar">
+          <p id="audit-results">{t.admin.results(n(result.total))}</p>
         </div>
-        <div className="field-row">
-          <div className="field">
-            <label className="label" htmlFor="a-from">
-              {a.from}
-            </label>
-            <input id="a-from" className="input" type="date" name="from" defaultValue={f.from ?? ''} />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="a-to">
-              {a.to}
-            </label>
-            <input id="a-to" className="input" type="date" name="to" defaultValue={f.to ?? ''} />
-          </div>
-        </div>
-        <div className="form-actions">
-          <button type="submit" className="btn btn-primary">
-            {t.admin.filter}
-          </button>
-          <Link href="/admin/audit">{t.common.actions.clearFilters}</Link>
-        </div>
-      </form>
-      <p style={{ fontWeight: 600 }}>{t.admin.results(n(result.total))}</p>
-      {result.items.length === 0 ? (
-        <EmptyState title={a.empty} />
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">{a.time}</th>
-                <th scope="col">{a.action}</th>
-                <th scope="col">{a.actor}</th>
-                <th scope="col">{a.target}</th>
-                <th scope="col">{a.details}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.items.map(({ log, actorName }) => (
-                <tr key={log.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{dateTime(log.createdAt)}</td>
-                  <td>
-                    <code>{log.action}</code>
-                  </td>
-                  <td>
-                    {log.actorUserId ? (
-                      <Link href={`/admin/users/${log.actorUserId}`}>{actorName ?? log.actorUserId.slice(0, 8)}</Link>
-                    ) : (
-                      <span className="muted">{a.system}</span>
-                    )}
-                    {log.actorRole && <span className="small muted"> ({log.actorRole})</span>}
-                  </td>
-                  <td className="small">
-                    {log.targetType ?? ''} {log.targetId ? <code>{log.targetId.length > 12 ? `${log.targetId.slice(0, 12)}…` : log.targetId}</code> : null}
-                  </td>
-                  <td className="small" style={{ wordBreak: 'break-word', maxWidth: 320 }}>
-                    <code>{compactMetadata(log.metadata)}</code>
-                  </td>
+        {result.items.length === 0 ? (
+          <AdminEmpty title={a.empty} hint={filtered ? t.admin.emptyHint : undefined} />
+        ) : (
+          <div className="table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col">{a.action}</th>
+                  <th scope="col">
+                    <span className="th-line">{a.actor}</span>
+                    <span className="th-line">{a.time}</span>
+                  </th>
+                  <th scope="col">{a.target}</th>
+                  <th scope="col">{a.details}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {result.items.map(({ log, actorName }) => {
+                  const details = compactMetadata(log.metadata);
+                  return (
+                    <tr key={log.id}>
+                      <td className="cell-main">
+                        <strong>{actionLabels[log.action] ?? log.action}</strong>
+                        <code className="cell-sub audit-code">{log.action}</code>
+                      </td>
+                      <td className="cell-pair">
+                        <div className="pair-item">
+                          <span className="pair-label">{a.actor}</span>
+                          <span>
+                            {log.actorUserId ? (
+                              <Link href={`/admin/users/${log.actorUserId}`}>{actorName ?? log.actorUserId.slice(0, 8)}</Link>
+                            ) : (
+                              <span className="muted">{a.system}</span>
+                            )}
+                            {log.actorRole && <span className="cell-sub">{roleLabel(log.actorRole)}</span>}
+                          </span>
+                        </div>
+                        <div className="pair-item">
+                          <span className="pair-label">{a.time}</span>
+                          <span className="cell-nowrap muted">{dateTime(log.createdAt)}</span>
+                        </div>
+                      </td>
+                      <td data-label={a.target} className={log.targetType || log.targetId ? undefined : 'cell-empty'}>
+                        <span>
+                          {log.targetType ?? ''}
+                          {log.targetId && <code className="cell-sub audit-code">{log.targetId.length > 12 ? `${log.targetId.slice(0, 12)}…` : log.targetId}</code>}
+                        </span>
+                      </td>
+                      <td data-label={a.details} className={details ? 'audit-details' : 'cell-empty'}>
+                        {details && <code className="audit-code">{details}</code>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
       <Pagination page={result.page} pageCount={result.pageCount} basePath="/admin/audit" params={{ action: f.action, targetType: f.targetType, targetId: f.targetId, actorId: f.actorId, from: f.from, to: f.to }} t={t} n={n} />
     </>
   );

@@ -119,13 +119,21 @@ export function EmptyState({ icon, title, children }: { icon?: ReactNode; title:
   );
 }
 
-export function Stat({ value, label, note }: { value: string; label: string; note?: string }) {
-  return (
-    <div className="stat">
+export function Stat({ value, label, note, icon }: { value: string; label: string; note?: string; icon?: ReactNode }) {
+  const body = (
+    <div>
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
       {note && <div className="small muted">{note}</div>}
     </div>
+  );
+  return icon ? (
+    <div className="stat stat-with-icon">
+      <span className="stat-icon">{icon}</span>
+      {body}
+    </div>
+  ) : (
+    <div className="stat">{body}</div>
   );
 }
 

@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Users } from 'lucide-react';
+import { ArrowRight, Building2, Plus, Search, Settings, TriangleAlert } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { requireActor } from '@/server/auth/current';
 import { communityCapabilities } from '@/server/policy';
 import { myCommunities } from '@/server/services/communities';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
-import { Badge, EmptyState } from '@/components/ui';
+import { CommunityStatusBadge, MembershipBadge, RoleBadge } from '@/components/community/badges';
+import { IconTile, PageHead } from '@/components/account/bits';
+import { EmptyState } from '@/components/ui';
 import { leaveCommunityAction } from '../actions';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,12 +24,13 @@ export default async function MyCommunitiesPage() {
 
   return (
     <>
-      <h1>{c.title}</h1>
-      <p>{c.intro}</p>
+      <PageHead title={c.title} intro={c.intro} />
       {rows.length === 0 ? (
-        <EmptyState icon={<Users size={36} aria-hidden="true" />} title={c.empty}>
+        <EmptyState icon={<Building2 size={36} aria-hidden="true" />} title={c.empty}>
+          <p className="muted">{c.emptyBody}</p>
           <div className="cluster" style={{ justifyContent: 'center' }}>
             <Link className="btn btn-primary" href="/communities">
+              <Search size={18} aria-hidden="true" />
               {c.find}
             </Link>
             <Link className="btn" href="/communities/new">
@@ -37,46 +40,63 @@ export default async function MyCommunitiesPage() {
         </EmptyState>
       ) : (
         <>
-          <ul className="list-plain stack">
+          <ul className="acct-list">
             {rows.map(({ membership, community }) => {
               const canManage = communityCapabilities(actor, membership, community.status).has('view_dashboard');
+              const name = locale === 'en' && community.nameEn ? community.nameEn : community.name;
+              const canLeave = membership.status === 'active' || membership.status === 'pending';
               return (
-                <li key={membership.id} className="card card-tight stack-sm">
-                  <div className="cluster between">
-                    <strong>
-                      <Link href={`/communities/${community.slug}`}>{locale === 'en' && community.nameEn ? community.nameEn : community.name}</Link>
-                    </strong>
-                    <Badge tone={community.status === 'approved' ? 'success' : community.status === 'pending' ? 'warning' : 'danger'}>
-                      {t.common.communityStatus[community.status]}
-                    </Badge>
+                <li key={membership.id} className="card acct-item">
+                  <div className="acct-item-head">
+                    <IconTile icon={Building2} tone="neutral" />
+                    <div>
+                      <h2 className="acct-item-title">
+                        <Link href={`/communities/${community.slug}`}>{name}</Link>
+                      </h2>
+                      <div className="acct-item-badges">
+                        <CommunityStatusBadge status={community.status} t={t} />
+                        {membership.status === 'active' && <RoleBadge role={membership.role} t={t} />}
+                        <MembershipBadge status={membership.status} t={t} />
+                      </div>
+                    </div>
                   </div>
-                  <dl className="dl small">
-                    <dt>{c.role}</dt>
-                    <dd>{t.common.roles[membership.role]}</dd>
-                    <dt>{c.status}</dt>
-                    <dd>{c.membershipStatus[membership.status]}</dd>
-                  </dl>
-                  <div className="cluster-sm">
+                  <div className="acct-actions">
                     {canManage && (
-                      <Link className="btn btn-primary btn-sm" href={`/manage/${community.slug}`}>
+                      <Link className="btn btn-dark btn-sm" href={`/manage/${community.slug}`}>
+                        <Settings size={16} aria-hidden="true" />
                         {c.manage}
                       </Link>
                     )}
                     <Link className="btn btn-sm" href={`/communities/${community.slug}`}>
                       {c.view}
                     </Link>
-                    <ActionForm action={leaveCommunityAction} className="stack-sm">
-                      <input type="hidden" name="communityId" value={community.id} />
-                      <SubmitButton label={membership.status === 'pending' ? c.withdraw : c.leave} pendingLabel={t.common.actions.saving} className="btn btn-sm btn-danger" />
-                    </ActionForm>
                   </div>
+                  {canLeave && (
+                    <div className="acct-danger-zone">
+                      <p>
+                        <TriangleAlert size={16} aria-hidden="true" />
+                        <span>{membership.status === 'pending' ? c.withdrawConsequence : c.leaveConsequence}</span>
+                      </p>
+                      <ActionForm action={leaveCommunityAction} className="stack-sm">
+                        <input type="hidden" name="communityId" value={community.id} />
+                        <SubmitButton label={membership.status === 'pending' ? c.withdraw : c.leave} pendingLabel={t.common.actions.saving} className="btn btn-sm btn-danger" />
+                      </ActionForm>
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ul>
-          <div className="cluster">
-            <Link href="/communities">{c.find}</Link>
-            <Link href="/communities/new">{c.register}</Link>
+          <div className="acct-actions">
+            <Link className="btn btn-soft" href="/communities">
+              <Search size={18} aria-hidden="true" />
+              {c.find}
+            </Link>
+            <Link className="section-link" href="/communities/new">
+              <Plus size={16} aria-hidden="true" />
+              {c.register}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
           </div>
         </>
       )}

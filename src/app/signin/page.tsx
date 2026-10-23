@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowRight, HeartHandshake, Info, LogIn, UserPlus } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { getI18n } from '@/i18n/server';
 import { getActor, safeNextPath } from '@/server/auth/current';
@@ -7,7 +8,7 @@ import { signInAction } from '../_actions/auth';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
 import { clientValidationMessages } from '@/components/form/client-messages';
 import { TextField } from '@/components/form/fields';
-import { Alert, PageHeader } from '@/components/ui';
+import { Alert } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -19,33 +20,57 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const next = safeNextPath(sp.next);
   if (await getActor()) redirect(next);
+  const a = t.auth;
   return (
-    <>
-      <PageHeader title={t.auth.signInTitle} intro={t.auth.signInIntro} />
-      <div className="container container-narrow section stack">
-        {sp.reset === '1' && <Alert tone="success">{t.auth.resetDone}</Alert>}
-        <div className="card">
+    <div className="auth-page">
+      <div className="container auth-column">
+        <div className="card auth-card">
+          <span className="auth-icon">
+            <LogIn size={26} aria-hidden="true" />
+          </span>
+          <h1>{a.signInTitle}</h1>
+          <p className="auth-intro">{a.signInIntro}</p>
+          {sp.reset === '1' && <Alert tone="success">{a.resetDone}</Alert>}
           <ActionForm action={signInAction} clientMessages={clientValidationMessages(t)}>
             <input type="hidden" name="next" value={next} />
-            <TextField name="phone" label={t.auth.phone} hint={t.auth.phoneHint} type="tel" inputMode="tel" autoComplete="tel" required maxLength={20} />
-            <TextField name="password" label={t.auth.password} type="password" autoComplete="current-password" required maxLength={128} />
-            <div className="form-actions">
-              <SubmitButton label={t.auth.signInButton} pendingLabel={t.auth.signingIn} className="btn btn-primary btn-block" />
-            </div>
-            <p className="small">
-              <Link href="/forgot-password">{t.auth.forgotLink}</Link>
+            <TextField name="phone" label={a.phone} hint={a.phoneHint} type="tel" inputMode="tel" autoComplete="tel" required maxLength={20} />
+            <TextField name="password" label={a.password} type="password" autoComplete="current-password" required maxLength={128} />
+            <p className="auth-forgot">
+              <Link href="/forgot-password">{a.forgotLink}</Link>
             </p>
+            <SubmitButton label={a.signInButton} pendingLabel={a.signingIn} className="btn btn-primary btn-lg btn-block" />
           </ActionForm>
         </div>
-        <div className="card stack-sm">
-          <p style={{ fontWeight: 600, margin: 0 }}>{t.auth.noAccount}</p>
-          <Link className="btn btn-primary" href="/register">
-            {t.auth.registerDonorLink}
+
+        <section className="card auth-alt" aria-labelledby="no-account">
+          <h2 id="no-account">{a.noAccount}</h2>
+          <Link className="auth-choice" href="/register">
+            <span className="pub-icon">
+              <HeartHandshake size={20} aria-hidden="true" />
+            </span>
+            <span className="auth-choice-text">
+              <strong>{a.registerDonorLink}</strong>
+              <span>{a.registerDonorHint}</span>
+            </span>
+            <ArrowRight size={18} aria-hidden="true" />
           </Link>
-          <Link href={`/register/account?next=${encodeURIComponent(next)}`}>{t.auth.registerAccountLink}</Link>
-        </div>
-        <p className="small muted">{t.auth.signedOutNote}</p>
+          <Link className="auth-choice" href={`/register/account?next=${encodeURIComponent(next)}`}>
+            <span className="pub-icon">
+              <UserPlus size={20} aria-hidden="true" />
+            </span>
+            <span className="auth-choice-text">
+              <strong>{a.registerAccountLink}</strong>
+              <span>{a.registerAccountHint}</span>
+            </span>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+        </section>
+
+        <p className="pub-meta auth-note">
+          <Info size={16} aria-hidden="true" />
+          <span>{a.signedOutNote}</span>
+        </p>
       </div>
-    </>
+    </div>
   );
 }

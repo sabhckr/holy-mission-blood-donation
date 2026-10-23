@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/server/db/client';
 import { auditLogs, donorProfiles, verificationEvents } from '@/server/db/schema';
 import { registerDonor, revealDonorPhone, searchDonors, getPublicDonorProfile, setAvailability, setDonorListingPaused, updateConsents, updateDonorProfile } from '@/server/services/donors';
-import { makeDonor, makeUser, nextPhone, OPEN_CONSENTS, PASSWORD, place, resetDb } from './helpers';
+import { makeDonor, makeUser, nextPhone, OPEN_CONSENTS, PASSWORD, place, resetDb, moveOutsideServiceArea } from './helpers';
 
 beforeEach(resetDb);
 
@@ -43,14 +43,16 @@ describe('donor search', () => {
   it('filters by blood group and location and only lists consenting, active donors', async () => {
     await makeDonor({ profile: { bloodGroup: 'O+' } });
     await makeDonor({ profile: { bloodGroup: 'B+' } });
-    await makeDonor({ profile: { bloodGroup: 'O+' }, district: 'Dhaka', upazila: 'Savar' });
+    const old = await makeDonor({ profile: { bloodGroup: 'O+' } });
+    await moveOutsideServiceArea('donor', old.donor.id, 'Dhaka', 'Savar'); // saved before the Lakshmipur-only rule
     await makeDonor({ profile: { bloodGroup: 'O+' }, consents: { listedInSearch: false } });
     const paused = await makeDonor({ profile: { bloodGroup: 'O+' } });
     await setDonorListingPaused(paused.actor, true);
     const area = await place('Lakshmipur', 'Raipur');
     const r = await searchDonors({ bloodGroup: 'O+', districtId: area.districtId }, null);
     expect(r.total).toBe(1);
-    expect((await searchDonors({ bloodGroup: 'O+' }, null)).total).toBe(2);
+    // The donor whose address is outside Lakshmipur is never listed.
+    expect((await searchDonors({ bloodGroup: 'O+' }, null)).total).toBe(1);
     expect((await searchDonors({ upazilaId: area.upazilaId }, null)).total).toBe(2);
     expect((await searchDonors({ bloodGroup: 'AB-' }, null)).total).toBe(0);
   });

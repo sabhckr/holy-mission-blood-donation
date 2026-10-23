@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
-import { Laptop } from 'lucide-react';
+import { KeyRound, Laptop, PowerOff, Smartphone, Trash2, TriangleAlert } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { getSession, requireActor } from '@/server/auth/current';
 import { listSessions } from '@/server/services/accounts';
 import { myDeletionRequest } from '@/server/services/privacy';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
 import { TextArea, TextField } from '@/components/form/fields';
+import { IconTile, PageHead } from '@/components/account/bits';
 import { Alert, Badge } from '@/components/ui';
 import {
   cancelDeletionAction,
@@ -29,6 +30,8 @@ function deviceLabel(ua: string | null): string | null {
   return [browser, os].filter(Boolean).join(' · ') || null;
 }
 
+const isPhone = (ua: string | null) => !!ua && /Android|iPhone|iPad|Mobile/i.test(ua);
+
 export default async function SecurityPage() {
   const { t, dateTime, instantDate } = await getI18n();
   const s = t.account.security;
@@ -38,46 +41,55 @@ export default async function SecurityPage() {
 
   return (
     <>
-      <h1>{s.title}</h1>
+      <PageHead title={s.title} intro={s.intro} />
 
-      <section className="stack" aria-labelledby="password-title">
-        <h2 id="password-title" style={{ fontSize: '1.15rem' }}>
-          {s.passwordTitle}
-        </h2>
-        <ActionForm action={changePasswordAction} aria-label={s.passwordTitle}>
-          <fieldset className="form-section">
-            <legend className="visually-hidden">{s.passwordTitle}</legend>
-            <TextField name="currentPassword" type="password" label={s.currentPassword} autoComplete="current-password" required maxLength={128} />
-            <TextField name="newPassword" type="password" label={s.newPassword} hint={s.passwordHint} autoComplete="new-password" required maxLength={128} />
-            <TextField name="confirmPassword" type="password" label={s.confirmPassword} autoComplete="new-password" required maxLength={128} />
-          </fieldset>
-          <SubmitButton label={s.changeButton} pendingLabel={t.common.actions.saving} />
-        </ActionForm>
-      </section>
+      <ActionForm action={changePasswordAction} aria-label={s.passwordTitle} className="form">
+        <fieldset className="form-section">
+          <legend id="password-title">
+            <KeyRound size={20} aria-hidden="true" />
+            {s.passwordTitle}
+          </legend>
+          <TextField name="currentPassword" type="password" label={s.currentPassword} autoComplete="current-password" required maxLength={128} />
+          <TextField name="newPassword" type="password" label={s.newPassword} hint={s.passwordHint} autoComplete="new-password" required maxLength={128} />
+          <TextField name="confirmPassword" type="password" label={s.confirmPassword} autoComplete="new-password" required maxLength={128} />
+          <div className="acct-form-actions">
+            <SubmitButton label={s.changeButton} pendingLabel={t.common.actions.saving} className="btn btn-primary btn-lg" />
+          </div>
+        </fieldset>
+      </ActionForm>
 
-      <section className="card stack" aria-labelledby="sessions-title">
-        <h2 id="sessions-title" style={{ fontSize: '1.15rem' }}>
-          {s.sessionsTitle}
-        </h2>
-        <ul className="list-plain list-divided">
+      <section className="card" aria-labelledby="sessions-title">
+        <div className="acct-card-head">
+          <IconTile icon={Laptop} tone="neutral" />
+          <div>
+            <h2 id="sessions-title">{s.sessionsTitle}</h2>
+            <p>{s.sessionsHint}</p>
+          </div>
+        </div>
+        <ul className="org-members">
           {sessions.map((x) => {
             const current = x.id === session?.sessionId;
             return (
-              <li key={x.id} className="cluster between">
-                <span className="cluster-sm" style={{ alignItems: 'flex-start', flexWrap: 'nowrap' }}>
-                  <Laptop size={18} aria-hidden="true" style={{ marginTop: 4, flex: 'none' }} />
-                  <span>
-                    <strong>{deviceLabel(x.userAgent) ?? s.unknownDevice}</strong> {current && <Badge tone="success">{s.sessionCurrent}</Badge>}
-                    <br />
-                    <span className="small muted">
-                      {s.sessionStarted(dateTime(x.createdAt))} · {s.sessionLastSeen(dateTime(x.lastSeenAt))}
-                    </span>
-                  </span>
-                </span>
+              <li key={x.id}>
+                <div className="org-member">
+                  <IconTile icon={isPhone(x.userAgent) ? Smartphone : Laptop} tone={current ? 'success' : 'neutral'} small />
+                  <div>
+                    <p className="org-member-name" style={{ margin: 0 }}>
+                      <span>{deviceLabel(x.userAgent) ?? s.unknownDevice}</span>
+                      {current && <Badge tone="success">{s.sessionCurrent}</Badge>}
+                    </p>
+                    <p className="acct-meta">
+                      <span>{s.sessionStarted(dateTime(x.createdAt))}</span>
+                      <span>{s.sessionLastSeen(dateTime(x.lastSeenAt))}</span>
+                    </p>
+                  </div>
+                </div>
                 {!current && (
-                  <ActionForm action={revokeSessionAction} className="stack-sm">
+                  <ActionForm action={revokeSessionAction} className="stack-sm org-member-actions">
                     <input type="hidden" name="sessionId" value={x.id} />
-                    <SubmitButton label={s.revoke} pendingLabel={t.common.actions.saving} className="btn btn-sm" />
+                    <div>
+                      <SubmitButton label={s.revoke} pendingLabel={t.common.actions.saving} className="btn btn-sm" />
+                    </div>
                   </ActionForm>
                 )}
               </li>
@@ -86,47 +98,62 @@ export default async function SecurityPage() {
         </ul>
         {others.length > 0 && (
           <ActionForm action={revokeOtherSessionsAction} className="stack-sm">
-            <SubmitButton label={s.signOutOthers} pendingLabel={t.common.actions.saving} className="btn" />
+            <div style={{ paddingTop: 'var(--space-3)', borderTop: '1px solid var(--line)' }}>
+              <SubmitButton label={s.signOutOthers} pendingLabel={t.common.actions.saving} className="btn" />
+            </div>
           </ActionForm>
         )}
       </section>
 
-      <section className="card stack" aria-labelledby="deactivate-title">
-        <h2 id="deactivate-title" style={{ fontSize: '1.15rem' }}>
-          {s.deactivateTitle}
+      <section aria-labelledby="danger-title" className="stack">
+        <h2 id="danger-title" className="acct-h2">
+          <TriangleAlert size={20} aria-hidden="true" className="icon-brand" />
+          {s.dangerTitle}
         </h2>
-        <p style={{ margin: 0 }}>{s.deactivateBody}</p>
-        <details className="disclosure">
-          <summary>{s.deactivateButton}</summary>
-          <ActionForm action={deactivateAction}>
-            <TextField name="password" type="password" label={s.confirmWithPassword} autoComplete="current-password" required maxLength={128} />
-            <div className="form-actions">
-              <SubmitButton label={s.deactivateButton} pendingLabel={t.common.actions.saving} className="btn btn-danger" />
-            </div>
-          </ActionForm>
-        </details>
-      </section>
 
-      <section className="card stack" aria-labelledby="deletion-title" id="deletion">
-        <h2 id="deletion-title" style={{ fontSize: '1.15rem' }}>
-          {s.deletionTitle}
-        </h2>
-        {deletion ? (
-          <>
-            <Alert tone="warning">{s.deletionPending(instantDate(deletion.createdAt))}</Alert>
-            <ActionForm action={cancelDeletionAction} className="stack-sm">
-              <SubmitButton label={s.cancelDeletion} pendingLabel={t.common.actions.saving} className="btn" />
+        <section className="card acct-danger" aria-labelledby="deactivate-title">
+          <div className="acct-card-head">
+            <IconTile icon={PowerOff} tone="warning" />
+            <div>
+              <h3 id="deactivate-title">{s.deactivateTitle}</h3>
+              <p>{s.deactivateHint}</p>
+            </div>
+          </div>
+          <details className="disclosure">
+            <summary>{s.deactivateButton}</summary>
+            <p>{s.deactivateBody}</p>
+            <ActionForm action={deactivateAction}>
+              <TextField name="password" type="password" label={s.confirmWithPassword} autoComplete="current-password" required maxLength={128} />
+              <div className="form-actions">
+                <SubmitButton label={s.deactivateButton} pendingLabel={t.common.actions.saving} className="btn btn-danger" />
+              </div>
             </ActionForm>
-          </>
-        ) : (
-          <>
-            <p style={{ margin: 0 }}>{s.deletionBody}</p>
-            <p style={{ margin: 0 }}>{s.deletionItems}</p>
-            <p className="small muted" style={{ margin: 0 }}>
-              {s.deletionKept}
-            </p>
+          </details>
+        </section>
+
+        <section className="card acct-danger" aria-labelledby="deletion-title" id="deletion">
+          <div className="acct-card-head">
+            <IconTile icon={Trash2} tone="danger" />
+            <div>
+              <h3 id="deletion-title">{s.deletionTitle}</h3>
+              <p>{s.deletionHint}</p>
+            </div>
+          </div>
+          {deletion ? (
+            <div className="stack-sm">
+              <Alert tone="warning">{s.deletionPending(instantDate(deletion.createdAt))}</Alert>
+              <ActionForm action={cancelDeletionAction} className="stack-sm">
+                <div>
+                  <SubmitButton label={s.cancelDeletion} pendingLabel={t.common.actions.saving} className="btn btn-soft" />
+                </div>
+              </ActionForm>
+            </div>
+          ) : (
             <details className="disclosure">
               <summary>{s.deletionButton}</summary>
+              <p>{s.deletionBody}</p>
+              <p className="acct-quote small">{s.deletionItems}</p>
+              <p className="small muted">{s.deletionKept}</p>
               <ActionForm action={requestDeletionAction}>
                 <TextArea name="reason" label={s.deletionReason} maxLength={300} />
                 <TextField name="password" type="password" label={s.confirmWithPassword} autoComplete="current-password" required maxLength={128} />
@@ -135,8 +162,8 @@ export default async function SecurityPage() {
                 </div>
               </ActionForm>
             </details>
-          </>
-        )}
+          )}
+        </section>
       </section>
     </>
   );

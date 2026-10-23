@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { History, Info, Settings2, Users } from 'lucide-react';
 import type { I18n } from '@/i18n/server';
 import type { RequestStatus } from '@/server/domain/constants';
 import type { getRequestForViewer } from '@/server/services/requests';
@@ -30,9 +31,14 @@ export function ManagePanel({ view, i18n, token }: { view: RequestView; i18n: I1
   const decisionLabels = { confirm: t.request.confirmResponse, decline: t.request.declineResponse, saving: t.common.actions.saving };
   return (
     <section className="stack" aria-labelledby="manage-heading">
-      <div className="card stack">
-        <h2 id="manage-heading">{t.request.manageTitle}</h2>
-        <p className="muted">{t.request.manageIntro}</p>
+      <div className="card manage-card stack">
+        <h2 id="manage-heading" className="pub-panel-title">
+          <Settings2 size={20} aria-hidden="true" />
+          {t.request.manageTitle}
+        </h2>
+        <p className="muted" style={{ marginBottom: 0 }}>
+          {t.request.manageIntro}
+        </p>
         {allowed.length > 0 ? (
           <StatusForm
             publicId={request.publicId}
@@ -52,16 +58,24 @@ export function ManagePanel({ view, i18n, token }: { view: RequestView; i18n: I1
         )}
       </div>
 
-      <div className="card stack">
-        <h2>{t.request.responsesTitle}</h2>
-        <p className="small muted">{t.request.confirmHint}</p>
+      <div className="card manage-card stack">
+        <h2 className="pub-panel-title">
+          <Users size={20} aria-hidden="true" />
+          {t.request.responsesTitle}
+        </h2>
+        <p className="pub-meta">
+          <Info size={14} aria-hidden="true" />
+          <span>{t.request.confirmHint}</span>
+        </p>
         {view.responses.length === 0 ? (
-          <p className="muted">{t.request.noResponsesYet}</p>
+          <p className="muted" style={{ marginBottom: 0 }}>
+            {t.request.noResponsesYet}
+          </p>
         ) : (
           <ul className="list-plain list-divided">
             {view.responses.map((r) => (
-              <li key={r.id} className="stack-sm">
-                <div className="cluster">
+              <li key={r.id} className="response-item">
+                <div className="response-item-head">
                   <BloodGroupBadge group={r.bloodGroup} small label={t.common.bloodGroup} />
                   <span>
                     <Link href={`/donors/${r.donorPublicId}`}>{r.donorName}</Link>
@@ -70,7 +84,11 @@ export function ManagePanel({ view, i18n, token }: { view: RequestView; i18n: I1
                   </span>
                   <Badge tone={RESPONSE_TONE[r.status]}>{t.request.responseStatus[r.status]}</Badge>
                 </div>
-                {r.message && <p className="small" style={{ margin: 0 }}>{r.message}</p>}
+                {r.message && (
+                  <p className="small" style={{ margin: 0 }}>
+                    {r.message}
+                  </p>
+                )}
                 {open && r.status !== 'withdrawn' && (
                   <ResponseDecisionForm
                     publicId={request.publicId}
@@ -88,22 +106,28 @@ export function ManagePanel({ view, i18n, token }: { view: RequestView; i18n: I1
       </div>
 
       {view.history.length > 0 && (
-        <div className="card stack">
-          <h2>{t.request.historyTitle}</h2>
-          <ol className="list-plain list-divided">
+        <details className="disclosure history-card">
+          <summary>
+            <span className="pub-summary">
+              <History size={18} aria-hidden="true" />
+              {t.request.historyTitle}
+            </span>
+          </summary>
+          <ol className="list-plain stack-sm history-list">
             {view.history.map(({ event, actorName }) => (
               <li key={event.id} className="small">
-                <strong>{t.request.historyAction[event.action as keyof typeof t.request.historyAction] ?? event.action}</strong>
-                {event.action === 'status' && <> — {t.common.requestStatus[event.toStatus]}</>}
-                {event.action !== 'response' && event.note && <> — {event.note}</>}
-                <br />
+                <span>
+                  <strong>{t.request.historyAction[event.action as keyof typeof t.request.historyAction] ?? event.action}</strong>
+                  {event.action === 'status' && <> — {t.common.requestStatus[event.toStatus]}</>}
+                  {event.action !== 'response' && event.note && <> — {event.note}</>}
+                </span>
                 <span className="muted">
                   {dateTime(event.createdAt)} · {actorName ?? (event.action === 'created' ? t.request.requesterActor : t.request.systemActor)}
                 </span>
               </li>
             ))}
           </ol>
-        </div>
+        </details>
       )}
     </section>
   );

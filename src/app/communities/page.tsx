@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BadgeCheck, Building2, MapPin, Users } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, MapPin, Plus, Search, Users } from 'lucide-react';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
 import { listCommunities } from '@/server/services/communities';
 import { compactLocations, getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { locationLabels } from '@/components/consent-labels';
 import { LocationPicker } from '@/components/form/LocationPicker';
-import { Badge, EmptyState, PageHeader, Pagination } from '@/components/ui';
+import { AffiliationBadge, CommunityStatusBadge } from '@/components/community/badges';
+import { IconTile } from '@/components/account/bits';
+import { EmptyState, PageHeader, Pagination } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -22,6 +24,8 @@ const filtersSchema = z.object({
   page: z.coerce.number().int().min(1).max(500).optional().catch(undefined),
 });
 
+const AREA_CHIPS = 3;
+
 export default async function CommunitiesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, n, locale } = await getI18n();
   const sp = await searchParams;
@@ -32,102 +36,141 @@ export default async function CommunitiesPage({ searchParams }: { searchParams: 
     getLocationIndex(),
   ]);
   const c = t.community;
+  const filtered = !!(filters.q || filters.division || filters.district);
   return (
     <>
       <PageHeader title={c.directoryTitle} intro={c.directoryIntro}>
-        <Link className="btn btn-primary" href="/communities/new">
+        <Link className="btn btn-soft" href="/communities/new">
+          <Plus size={18} aria-hidden="true" />
           {c.registerCta}
         </Link>
       </PageHeader>
-      <div className="container section layout-sidebar">
-        <aside className="card card-tight" aria-labelledby="community-filters">
-          <h2 id="community-filters" style={{ fontSize: '1.1rem' }}>
-            {c.filters}
-          </h2>
-          <form method="get" action="/communities" className="form" role="search">
-            <div className="field">
-              <label className="label" htmlFor="cf-q">
-                {c.searchName}
-              </label>
-              <p className="hint">{c.searchNameHint}</p>
-              <input id="cf-q" className="input" name="q" defaultValue={filters.q ?? ''} maxLength={60} />
-            </div>
-            <LocationPicker
-              locations={locs}
-              labels={locationLabels(t)}
-              defaults={{ divisionId: filters.division, districtId: filters.district }}
-              anyOption
-              showUpazila={false}
-              required={{ division: false, district: false, upazila: false }}
-              names={{ division: 'division', district: 'district', upazila: 'upazila' }}
-            />
-            <button type="submit" className="btn btn-primary btn-block">
-              {t.common.actions.search}
-            </button>
-          </form>
-          <p style={{ marginTop: 'var(--space-3)' }}>
-            <Link href="/communities">{t.common.actions.clearFilters}</Link>
-          </p>
-        </aside>
+      <div className="section">
+        <div className="container stack-lg">
+          <section className="card org-filter" aria-labelledby="community-filters">
+            <h2 id="community-filters" className="acct-h3" style={{ marginBottom: 'var(--space-3)' }}>
+              <Search size={18} aria-hidden="true" className="icon-brand" />
+              {c.filters}
+            </h2>
+            <form method="get" action="/communities" role="search" aria-labelledby="community-filters">
+              <div className="field">
+                <label className="label" htmlFor="cf-q">
+                  {c.searchName}
+                </label>
+                <input id="cf-q" className="input" name="q" type="search" defaultValue={filters.q ?? ''} maxLength={60} aria-describedby="cf-q-hint" />
+                <p className="visually-hidden" id="cf-q-hint">
+                  {c.searchNameHint}
+                </p>
+              </div>
+              <LocationPicker
+                locations={locs}
+                labels={locationLabels(t)}
+                defaults={{ divisionId: filters.division, districtId: filters.district }}
+                anyOption
+                showUpazila={false}
+                required={{ division: false, district: false, upazila: false }}
+                names={{ division: 'division', district: 'district', upazila: 'upazila' }}
+              />
+              <button type="submit" className="btn btn-primary">
+                <Search size={18} aria-hidden="true" />
+                {t.common.actions.search}
+              </button>
+            </form>
+          </section>
 
-        <section className="stack" aria-live="polite">
-          <p style={{ fontWeight: 700, margin: 0 }}>{c.resultCount(n(result.total))}</p>
-          {result.items.length === 0 ? (
-            <EmptyState icon={<Building2 size={40} aria-hidden="true" />} title={c.emptyTitle}>
-              <p>{c.emptyBody}</p>
-              <Link className="btn btn-primary" href="/communities/new">
-                {c.registerCta}
-              </Link>
-            </EmptyState>
-          ) : (
-            <div className="grid grid-2">
-              {result.items.map((item) => (
-                <article key={item.id} className="card card-tight stack-sm">
-                  <h3 className="card-title">
-                    <Link href={`/communities/${item.slug}`}>{locale === 'en' && item.nameEn ? item.nameEn : item.name}</Link>
-                  </h3>
-                  <div className="cluster-sm">
-                    <Badge tone="success">
-                      <BadgeCheck size={14} aria-hidden="true" />
-                      {t.common.communityStatus.approved}
-                    </Badge>
-                    <Badge tone={item.affiliation === 'holy_mission' ? 'info' : 'neutral'}>{t.common.affiliation[item.affiliation]}</Badge>
-                    <Badge tone="neutral">{t.common.communityKind[item.kind]}</Badge>
-                  </div>
-                  <p className="small muted" style={{ margin: 0 }}>
-                    {item.affiliation === 'holy_mission' ? t.common.affiliation.holyMissionNote : t.common.affiliation.independentNote}
-                  </p>
-                  {item.foundedYear && <p className="small muted" style={{ margin: 0 }}>{c.foundedIn(n(item.foundedYear).replace(/[,٬]/g, ''))}</p>}
-                  <p className="small muted" style={{ margin: 0 }}>
-                    <MapPin size={14} aria-hidden="true" /> {labelFrom(index, locale, item.districtId)} ·{' '}
-                    <Users size={14} aria-hidden="true" /> {c.members(n(item.memberCount))}
-                  </p>
-                  {item.serviceAreas.length > 0 && (
-                    <p className="small" style={{ margin: 0 }}>
-                      <strong>{c.serviceAreas}:</strong> {item.serviceAreas.map((a) => (locale === 'bn' ? a.nameBn : a.nameEn)).join(', ')}
-                    </p>
-                  )}
-                  <Link className="btn btn-sm" href={`/communities/${item.slug}`}>
-                    {c.viewPage}
-                  </Link>
-                </article>
-              ))}
+          <section className="stack" aria-labelledby="results-title">
+            <div className="org-results-head">
+              <h2 id="results-title" className="acct-h3" aria-live="polite">
+                {c.resultCount(n(result.total))}
+              </h2>
+              {filtered && (
+                <Link className="section-link" href="/communities">
+                  {t.common.actions.clearFilters}
+                </Link>
+              )}
             </div>
-          )}
-          <Pagination
-            page={result.page}
-            pageCount={result.pageCount}
-            basePath="/communities"
-            params={{ q: filters.q, division: filters.division?.toString(), district: filters.district?.toString() }}
-            t={t}
-            n={n}
-          />
-          <div className="card card-accent stack-sm">
-            <h2 style={{ fontSize: '1.1rem' }}>{c.registerCta}</h2>
-            <p style={{ margin: 0 }}>{c.registerCtaBody}</p>
-            <Link href="/communities/new">{c.registerCta}</Link>
-          </div>
-        </section>
+            {result.items.length === 0 ? (
+              <EmptyState icon={<Building2 size={40} aria-hidden="true" />} title={c.emptyTitle}>
+                <p className="muted">{c.emptyBody}</p>
+                <Link className="btn btn-soft" href="/communities/new">
+                  {c.registerCta}
+                </Link>
+              </EmptyState>
+            ) : (
+              <ul className="org-grid">
+                {result.items.map((item) => {
+                  const name = locale === 'en' && item.nameEn ? item.nameEn : item.name;
+                  const areas = item.serviceAreas.map((a) => (locale === 'bn' ? a.nameBn : a.nameEn));
+                  return (
+                    <li key={item.id}>
+                      <Link className="org-card" href={`/communities/${item.slug}`}>
+                        <div className="org-card-head">
+                          <IconTile icon={Building2} tone={item.affiliation === 'holy_mission' ? 'info' : 'neutral'} />
+                          <div>
+                            <h3>{name}</h3>
+                            <div className="acct-item-badges">
+                              {item.status === 'approved' && <CommunityStatusBadge status="approved" t={t} />}
+                              <AffiliationBadge affiliation={item.affiliation} t={t} />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="acct-meta">
+                          <span>
+                            <MapPin size={15} aria-hidden="true" />
+                            {labelFrom(index, locale, item.districtId)}
+                          </span>
+                          <span>
+                            <Users size={15} aria-hidden="true" />
+                            {c.members(n(item.memberCount))}
+                          </span>
+                          {item.foundedYear && (
+                            <span>
+                              <CalendarDays size={15} aria-hidden="true" />
+                              {c.foundedIn(n(item.foundedYear).replace(/[,٬]/g, ''))}
+                            </span>
+                          )}
+                        </p>
+                        {areas.length > 0 && (
+                          <ul className="acct-chips" aria-label={c.serviceAreas}>
+                            {areas.slice(0, AREA_CHIPS).map((a) => (
+                              <li key={a} className="acct-chip">
+                                {a}
+                              </li>
+                            ))}
+                            {areas.length > AREA_CHIPS && <li className="acct-chip">{c.areasMore(n(areas.length - AREA_CHIPS))}</li>}
+                          </ul>
+                        )}
+                        <span className="org-card-foot">
+                          {c.viewPage}
+                          <ArrowRight size={18} aria-hidden="true" />
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <Pagination
+              page={result.page}
+              pageCount={result.pageCount}
+              basePath="/communities"
+              params={{ q: filters.q, division: filters.division?.toString(), district: filters.district?.toString() }}
+              t={t}
+              n={n}
+            />
+          </section>
+
+          <section className="card card-accent org-cta" aria-labelledby="register-cta">
+            <div>
+              <h2 id="register-cta">{c.registerCtaTitle}</h2>
+              <p>{c.registerCtaBody}</p>
+            </div>
+            <Link className="btn btn-soft" href="/communities/new">
+              {c.registerCta}
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+          </section>
+        </div>
       </div>
     </>
   );

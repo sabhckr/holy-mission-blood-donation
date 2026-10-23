@@ -11,6 +11,8 @@ type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 interface FormContextValue {
   state: FormState;
   pending: boolean;
+  /** Visible word for required fields, when the form was given clientMessages. */
+  requiredMark?: string;
 }
 
 const FormContext = createContext<FormContextValue>({ state: { status: 'idle' }, pending: false });
@@ -105,7 +107,7 @@ export function ActionForm({
   };
 
   return (
-    <FormContext.Provider value={{ state, pending }}>
+    <FormContext.Provider value={{ state, pending, requiredMark: clientMessages?.requiredMark }}>
       <form
         ref={formRef}
         action={formAction}

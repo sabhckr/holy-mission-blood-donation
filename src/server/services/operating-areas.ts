@@ -6,10 +6,11 @@ import { AppError, conflict, forbidden, isUniqueViolation, notFound, validationE
 import { can, type Actor } from '../policy';
 import type { ClientMeta } from './accounts';
 import { audit } from './audit';
+import { withinServiceArea } from './service-area';
 
 /**
- * Holy Mission's official operating areas. These describe where the organisation itself is
- * active — not where donors or organisations may come from (that is all of Bangladesh).
+ * Holy Mission's official operating areas: Lakshmipur district and, where useful, the upazilas
+ * inside it where the team is active. Nothing outside Lakshmipur can be added.
  */
 export interface OperatingAreaRow {
   id: number;
@@ -58,6 +59,7 @@ export async function addOperatingArea(actor: Actor, locationId: number, publicN
   requireManager(actor);
   const [location] = await db.select().from(locations).where(eq(locations.id, locationId));
   if (!location || !location.isActive) throw validationError({ locationId: 'invalidLocation' });
+  if (!(await withinServiceArea([locationId]))) throw validationError({ locationId: 'outsideServiceArea' });
   try {
     return await db.transaction(async (tx) => {
       const [row] = await tx.insert(operatingAreas).values({ locationId, publicNote, updatedByUserId: actor.userId }).returning();

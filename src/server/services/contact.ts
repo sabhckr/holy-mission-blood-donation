@@ -7,7 +7,7 @@ import type { ClientMeta } from './accounts';
 import { audit } from './audit';
 import { createNotifications } from './notifications';
 import { getSettings } from './settings';
-import { donorAvailability, isPubliclyListed } from './donors';
+import { donorAvailability, donorInServiceArea, isPubliclyListed } from './donors';
 
 /**
  * Consent-based contact: a signed-in person asks a donor to get in touch. The donor sees the
@@ -20,7 +20,7 @@ export async function sendContactRequest(actor: Actor, donorPublicId: string, me
   try {
     return await db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ donor: donorProfiles, consent: donorConsents, accountStatus: users.status })
+        .select({ donor: donorProfiles, consent: donorConsents, accountStatus: users.status, inServiceArea: donorInServiceArea() })
         .from(donorProfiles)
         .innerJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
         .innerJoin(users, eq(users.id, donorProfiles.userId))

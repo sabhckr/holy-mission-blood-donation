@@ -15,8 +15,9 @@ import {
   respondToRequest,
   setResponseStatus,
   type BloodRequestInput,
+  listPublicRequests,
 } from '@/server/services/requests';
-import { makeAdmin, makeCommunity, makeDonor, makeUser, nextPhone, place, resetDb } from './helpers';
+import { makeAdmin, makeCommunity, makeDonor, makeUser, nextPhone, place, resetDb, moveOutsideServiceArea } from './helpers';
 
 beforeEach(resetDb);
 
@@ -98,7 +99,7 @@ describe('blood requests', () => {
     const local = await makeUser('Local leader');
     const far = await makeUser('Far leader');
     const localC = await makeCommunity(local.actor, admin, { areaUpazilas: ['Raipur'] });
-    const farC = await makeCommunity(far.actor, admin, { district: 'Sylhet' });
+    const farC = await makeCommunity(far.actor, admin, { areaUpazilas: ['Ramgati'] });
     const { request } = await createBloodRequest(null, await requestInput());
     expect((await communityRequestQueue(local.actor, localC.id, { scope: 'available' })).total).toBe(1);
     expect((await communityRequestQueue(far.actor, farC.id, { scope: 'available' })).total).toBe(0);
@@ -116,7 +117,7 @@ describe('blood requests', () => {
     const local = await makeUser('Local');
     const other = await makeUser('Other');
     const localC = await makeCommunity(local.actor, admin);
-    const otherC = await makeCommunity(other.actor, admin, { district: 'Noakhali' });
+    const otherC = await makeCommunity(other.actor, admin, { areaUpazilas: ['Kamalnagar'] });
     const coordinator = await makeUser('Coord');
     await applyToJoin(coordinator.actor, otherC.id);
     const m = await getMembership(otherC.id, coordinator.user.id);
@@ -129,6 +130,19 @@ describe('blood requests', () => {
     // an ordinary member of the target community gets nothing
     expect((await getRequestForViewer(request.publicId, coordinator.actor))?.access.canManage).toBe(false);
     expect((await communityRequestQueue(other.actor, otherC.id, { scope: 'mine' })).total).toBe(1);
+  });
+
+  it('accepts requests for Lakshmipur only and hides older ones from elsewhere', async () => {
+    const dhaka = await place('Dhaka', 'Savar');
+    await expect(createBloodRequest(null, await requestInput({ ...dhaka }))).rejects.toMatchObject({ fieldErrors: { districtId: 'outsideServiceArea' } });
+    const { request, manageToken } = await createBloodRequest(null, await requestInput());
+    await moveOutsideServiceArea('request', request.id, 'Dhaka', 'Savar'); // saved before the Lakshmipur-only rule
+    expect((await listPublicRequests({})).total).toBe(0);
+    expect(await getRequestForViewer(request.publicId, null)).toBeNull();
+    // The requester's private link still works, so they can close it.
+    expect((await getRequestForViewer(request.publicId, null, manageToken))?.request.inServiceArea).toBe(false);
+    const donor = await makeDonor();
+    await expect(respondToRequest(donor.actor, request.publicId, null)).rejects.toMatchObject({ messageKey: 'outside_service_area' });
   });
 
   it('expires overdue requests', async () => {
@@ -145,14 +159,14 @@ describe('blood requests', () => {
     const leader = await makeUser();
     await makeCommunity(leader.actor, admin, { name: 'Lakshmipur Blood Bond' });
     await makeDonor({ upazila: 'Ramganj', profile: { bloodGroup: 'AB-' } });
-    await makeDonor({ district: 'Dhaka', upazila: 'Savar', profile: { bloodGroup: 'AB-' } });
+    const old = await makeDonor({ profile: { bloodGroup: 'AB-' } });
+    await moveOutsideServiceArea('donor', old.donor.id, 'Dhaka', 'Savar'); // saved before the Lakshmipur-only rule
     const area = await place('Lakshmipur', 'Raipur');
     const fb = await noDonorFallback({ bloodGroup: 'AB-', ...area });
+    // The search never widens beyond Lakshmipur, and the old Dhaka record is not counted.
     expect(fb.wider.map((w) => [w.level, w.total])).toEqual([
       ['upazila', 0],
       ['district', 1],
-      ['division', 1],
-      ['country', 2],
     ]);
     expect(fb.communities.map((c) => c.name)).toEqual(['Lakshmipur Blood Bond']);
   });

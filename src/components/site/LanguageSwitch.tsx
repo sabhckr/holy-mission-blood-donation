@@ -1,29 +1,16 @@
 import type { Locale } from '@/i18n/config';
 
-/** Plain links (no JavaScript): /lang sets the cookie and returns to the same page. */
+/**
+ * One small button that switches to the other language (a plain link: /lang sets the cookie and
+ * returns to the same page, so it works without JavaScript). Its accessible name is the full
+ * language name.
+ */
 export function LanguageSwitch({ locale, currentUrl, label }: { locale: Locale; currentUrl: string; label: string }) {
-  const href = (to: Locale) => `/lang?to=${to}&next=${encodeURIComponent(currentUrl)}`;
+  const to: Locale = locale === 'bn' ? 'en' : 'bn';
+  const href = `/lang?to=${to}&next=${encodeURIComponent(currentUrl)}`;
   return (
-    <nav className="lang-switch" aria-label={label}>
-      {locale === 'bn' ? (
-        <span aria-current="true" lang="bn">
-          বাংলা
-        </span>
-      ) : (
-        <a href={href('bn')} lang="bn" hrefLang="bn">
-          বাংলা
-        </a>
-      )}
-      <span className="sep" aria-hidden="true" />
-      {locale === 'en' ? (
-        <span aria-current="true" lang="en">
-          English
-        </span>
-      ) : (
-        <a href={href('en')} lang="en" hrefLang="en">
-          English
-        </a>
-      )}
-    </nav>
+    <a className="lang" href={href} lang={to} hrefLang={to} aria-label={to === 'en' ? 'English' : 'বাংলা'} title={label}>
+      {to === 'en' ? 'EN' : 'বাংলা'}
+    </a>
   );
 }

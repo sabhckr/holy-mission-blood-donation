@@ -20,7 +20,7 @@ import { getPublicDonorProfile, searchDonors, setAvailability, setDonorListingPa
 import { addOperatingArea, listOperatingAreas, seedInitialOperatingArea, setOperatingAreaActive } from '@/server/services/operating-areas';
 import { DEFAULT_SETTINGS } from '@/server/domain/settings-defaults';
 import { updateSettings } from '@/server/services/settings';
-import { makeAdmin, makeDonor, makeModerator, makeUser, nextPhone, OPEN_CONSENTS, PASSWORD, place, resetDb } from './helpers';
+import { makeAdmin, makeDonor, makeModerator, makeUser, moveOutsideServiceArea, nextPhone, OPEN_CONSENTS, PASSWORD, place, resetDb } from './helpers';
 
 beforeEach(resetDb);
 
@@ -119,16 +119,20 @@ describe('listing status and record management', () => {
   it('staff can add a donor on someone’s behalf only with confirmed consent; nobody can sign in to it yet', async () => {
     const { actor: admin } = await makeAdmin();
     const phone = nextPhone();
-    const area = await place('Dhaka', 'Savar');
+    const area = await place('Lakshmipur', 'Raipur');
     const input = {
       phone,
       profile: { fullName: 'Nusrat Jahan', dateOfBirth: '1998-01-20', bloodGroup: 'B-' as const, ...area, locality: null, contactPhone: phone, preferredContactMethod: 'call' as const },
       consents: OPEN_CONSENTS,
       availableNow: true,
       consentConfirmed: false,
-      note: 'Registered at the Savar blood camp',
+      note: 'Registered at the Raipur blood camp',
     };
     await expect(staffCreateDonor(admin, input)).rejects.toMatchObject({ fieldErrors: { consentConfirmed: 'mustAccept' } });
+    const dhaka = await place('Dhaka', 'Savar');
+    await expect(staffCreateDonor(admin, { ...input, consentConfirmed: true, profile: { ...input.profile, ...dhaka } })).rejects.toMatchObject({
+      fieldErrors: { districtId: 'outsideServiceArea' },
+    });
     const { donor } = await staffCreateDonor(admin, { ...input, consentConfirmed: true });
     expect(donor.registrationStatus).toBe('approved');
     const found = await searchDonors({ bloodGroup: 'B-' }, null);
@@ -153,9 +157,9 @@ describe('moderator permissions (least privilege)', () => {
     const { actor: mod } = await makeModerator();
     const { actor: admin } = await makeAdmin();
     const leader = await makeUser('Leader');
-    const hq = await place('Chattogram');
+    const hq = await place('Lakshmipur');
     const c = await registerCommunity(leader.actor, {
-      name: 'Chattogram Blood Friends', nameEn: null, kind: 'blood_organization', description: null, foundedYear: null,
+      name: 'Ramgati Blood Friends', nameEn: null, kind: 'blood_organization', description: null, foundedYear: null,
       divisionId: hq.divisionId, districtId: hq.districtId, serviceAreaIds: [hq.districtId], publicPhone: null, publicEmail: null,
       facebookUrl: null, showPublicContact: false, coordinatorContactPreference: 'in_app',
       representativeName: 'Rahim Uddin', representativeRole: 'Secretary', representativePhone: nextPhone(), verificationInfo: null,
@@ -163,8 +167,8 @@ describe('moderator permissions (least privilege)', () => {
     await expect(reviewCommunity(mod, c.id, 'approved', null)).rejects.toMatchObject({ code: 'forbidden' });
     await expect(updateSettings(mod, DEFAULT_SETTINGS)).rejects.toMatchObject({ code: 'forbidden' });
     await expect(exportData(mod, 'donor_directory', PASSWORD)).rejects.toMatchObject({ code: 'forbidden' });
-    const dhaka = await place('Dhaka');
-    await expect(addOperatingArea(mod, dhaka.districtId, null)).rejects.toMatchObject({ code: 'forbidden' });
+    const raipur = await place('Lakshmipur', 'Raipur');
+    await expect(addOperatingArea(mod, raipur.upazilaId!, null)).rejects.toMatchObject({ code: 'forbidden' });
     const target = await makeUser('Target');
     await expect(setUserRole(mod, target.user.id, 'moderator', PASSWORD)).rejects.toMatchObject({ code: 'forbidden' });
     await expect(platformStats(mod)).resolves.toBeTruthy();
@@ -175,28 +179,39 @@ describe('moderator permissions (least privilege)', () => {
   });
 });
 
-describe('operating area vs nationwide membership', () => {
+describe('Lakshmipur-only service area', () => {
+  const orgInput = (hq: { divisionId: number; districtId: number }, serviceAreaIds: number[]) => ({
+    name: 'Blood Friends', nameEn: null, kind: 'blood_organization' as const, description: null, foundedYear: null,
+    divisionId: hq.divisionId, districtId: hq.districtId, serviceAreaIds, publicPhone: null, publicEmail: null,
+    facebookUrl: null, showPublicContact: false, coordinatorContactPreference: 'in_app' as const,
+    representativeName: 'Rahim Uddin', representativeRole: 'Secretary', representativePhone: nextPhone(), verificationInfo: null,
+  });
+
   it('starts with Lakshmipur as the only active operating area', async () => {
     const areas = await listOperatingAreas({ activeOnly: true });
     expect(areas.map((a) => a.nameEn)).toEqual(['Lakshmipur']);
   });
 
-  it('accepts donors and organisations from outside Lakshmipur without making them official', async () => {
-    const dhakaDonor = await makeDonor({ district: 'Dhaka', upazila: 'Savar', profile: { bloodGroup: 'AB+' } });
-    expect((await searchDonors({ bloodGroup: 'AB+' }, null)).items.map((d) => d.publicId)).toEqual([dhakaDonor.donor.publicId]);
+  it('refuses donors and organisations outside Lakshmipur; approved organisations stay independent', async () => {
+    await expect(makeDonor({ district: 'Dhaka', upazila: 'Savar' })).rejects.toMatchObject({ fieldErrors: { districtId: 'outsideServiceArea' } });
+    const local = await makeDonor({ profile: { bloodGroup: 'AB+' } });
+    const dhaka = await place('Dhaka', 'Savar');
+    const { fullName, dateOfBirth, bloodGroup, locality, contactPhone, preferredContactMethod } = (await db.select().from(donorProfiles).where(eq(donorProfiles.id, local.donor.id)))[0];
+    await expect(
+      updateDonorProfile(local.actor, { fullName, dateOfBirth, bloodGroup, locality, contactPhone, preferredContactMethod, ...dhaka }),
+    ).rejects.toMatchObject({ fieldErrors: { districtId: 'outsideServiceArea' } });
+
     const { actor: admin } = await makeAdmin();
     const leader = await makeUser('Leader');
-    const hq = await place('Chattogram');
-    const c = await registerCommunity(leader.actor, {
-      name: 'Chattogram Blood Friends', nameEn: null, kind: 'blood_organization', description: null, foundedYear: null,
-      divisionId: hq.divisionId, districtId: hq.districtId, serviceAreaIds: [hq.districtId], publicPhone: null, publicEmail: null,
-      facebookUrl: null, showPublicContact: false, coordinatorContactPreference: 'in_app',
-      representativeName: 'Rahim Uddin', representativeRole: 'Secretary', representativePhone: nextPhone(), verificationInfo: null,
-    });
+    const chattogram = await place('Chattogram');
+    const lakshmipur = await place('Lakshmipur');
+    const ramganj = await place('Lakshmipur', 'Ramganj');
+    await expect(registerCommunity(leader.actor, orgInput(chattogram, [chattogram.districtId]))).rejects.toMatchObject({ fieldErrors: { districtId: 'outsideServiceArea' } });
+    await expect(registerCommunity(leader.actor, orgInput(lakshmipur, [chattogram.districtId]))).rejects.toMatchObject({ fieldErrors: { serviceAreaIds: 'outsideServiceArea' } });
+    const c = await registerCommunity(leader.actor, orgInput(lakshmipur, [ramganj.upazilaId!]));
     await reviewCommunity(admin, c.id, 'approved', null);
     const [row] = await db.select().from(communities).where(eq(communities.id, c.id));
     expect(publicCommunity(row).affiliation).toBe('independent');
-    expect((await listOperatingAreas({ activeOnly: true })).map((a) => a.nameEn)).toEqual(['Lakshmipur']);
     const { actor: mod } = await makeModerator();
     await expect(setCommunityAffiliation(mod, c.id, 'holy_mission', 'x')).rejects.toMatchObject({ code: 'forbidden' });
     await expect(setCommunityAffiliation(admin, c.id, 'holy_mission', '')).rejects.toMatchObject({ fieldErrors: { reason: 'required' } });
@@ -204,19 +219,45 @@ describe('operating area vs nationwide membership', () => {
     expect(await db.select().from(auditLogs).where(eq(auditLogs.action, 'community.affiliation_changed'))).toHaveLength(1);
   });
 
-  it('admins add and deactivate areas with an audited reason; the seed never re-activates', async () => {
+  it('keeps records saved before the rule, hides them from the public and blocks approving them', async () => {
+    const { actor: admin } = await makeAdmin();
+    const { actor: mod } = await makeModerator();
+    const old = await makeDonor({ pending: true, profile: { bloodGroup: 'A-' } });
+    await moveOutsideServiceArea('donor', old.donor.id, 'Dhaka', 'Savar');
+    await expect(reviewDonorRegistration(mod, old.donor.id, 'approved', null)).rejects.toMatchObject({ messageKey: 'outside_service_area' });
+    const listed = await makeDonor({ profile: { bloodGroup: 'A-' } });
+    await moveOutsideServiceArea('donor', listed.donor.id, 'Dhaka', 'Savar');
+    expect((await searchDonors({ bloodGroup: 'A-' }, null)).total).toBe(0);
+    expect(await getPublicDonorProfile(listed.donor.publicId, null)).toBeNull();
+    expect(await getPublicDonorProfile(listed.donor.publicId, listed.actor)).not.toBeNull(); // the donor still sees it
+    const someone = await makeUser('Someone');
+    await expect(sendContactRequest(someone.actor, listed.donor.publicId, 'Can you help?', null)).rejects.toMatchObject({ code: 'not_found' });
+    // Staff can find every such record and nothing was deleted.
+    const outside = await listDonorsForStaff(mod, { area: 'outside' });
+    expect(outside.items.map((i) => i.id).sort()).toEqual([old.donor.id, listed.donor.id].sort());
+    expect(outside.items.every((i) => i.inServiceArea === false)).toBe(true);
+
+    const leader = await makeUser('Leader');
+    const c = await registerCommunity(leader.actor, orgInput(await place('Lakshmipur'), [(await place('Lakshmipur')).districtId]));
+    await moveOutsideServiceArea('community', c.id, 'Noakhali');
+    await expect(reviewCommunity(admin, c.id, 'approved', null)).rejects.toMatchObject({ messageKey: 'outside_service_area' });
+    await reviewCommunity(admin, c.id, 'rejected', 'Outside Lakshmipur');
+  });
+
+  it('admins add operating areas only inside Lakshmipur, with an audited reason; the seed never re-activates', async () => {
     const { actor: admin } = await makeAdmin();
     const feni = await place('Feni');
-    const added = await addOperatingArea(admin, feni.districtId, 'Volunteers start in November');
-    await expect(addOperatingArea(admin, feni.districtId, null)).rejects.toMatchObject({ messageKey: 'duplicate' });
-    expect((await listOperatingAreas({ activeOnly: true })).map((a) => a.nameEn)).toEqual(['Feni', 'Lakshmipur']);
+    await expect(addOperatingArea(admin, feni.districtId, null)).rejects.toMatchObject({ fieldErrors: { locationId: 'outsideServiceArea' } });
+    const raipur = await place('Lakshmipur', 'Raipur');
+    await addOperatingArea(admin, raipur.upazilaId!, 'Volunteers start in November');
+    await expect(addOperatingArea(admin, raipur.upazilaId!, null)).rejects.toMatchObject({ messageKey: 'duplicate' });
+    expect((await listOperatingAreas({ activeOnly: true })).map((a) => a.nameEn)).toEqual(['Lakshmipur', 'Raipur']);
     const [lakshmipur] = await db.select().from(operatingAreas).where(eq(operatingAreas.isActive, true)).orderBy(operatingAreas.id).limit(1);
     await expect(setOperatingAreaActive(admin, lakshmipur.id, false, '')).rejects.toMatchObject({ fieldErrors: { reason: 'required' } });
     await setOperatingAreaActive(admin, lakshmipur.id, false, 'Temporarily paused');
     expect(await seedInitialOperatingArea()).toBe(false);
-    expect((await listOperatingAreas({ activeOnly: true })).map((a) => a.nameEn)).toEqual(['Feni']);
+    expect((await listOperatingAreas({ activeOnly: true })).map((a) => a.nameEn)).toEqual(['Raipur']);
     const logs = await db.select().from(auditLogs).where(eq(auditLogs.targetType, 'location'));
     expect(logs.map((l) => l.action)).toEqual(expect.arrayContaining(['operating_area.added', 'operating_area.deactivated']));
-    void added;
   });
 });

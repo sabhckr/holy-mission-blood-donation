@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
+import { CalendarClock, Droplets, HeartPulse, UserRoundCheck } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { getI18n } from '@/i18n/server';
 import { requirePermission } from '@/server/auth/current';
 import { DONATION_TYPES } from '@/server/domain/constants';
 import { SETTINGS_LIMITS } from '@/server/domain/settings-defaults';
 import { getSettings } from '@/server/services/settings';
+import { AdminPageHead } from '@/components/admin/AdminUi';
+import { ADMIN_ICONS } from '@/components/admin/icons';
 import { ActionForm, SubmitButton } from '@/components/form/ActionForm';
+import { clientValidationMessages } from '@/components/form/client-messages';
 import { TextField } from '@/components/form/fields';
 import { Alert } from '@/components/ui';
 import { updateSettingsAction } from '../actions';
@@ -12,6 +17,17 @@ import { updateSettingsAction } from '../actions';
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
   return { title: t.admin.settings.title, robots: { index: false } };
+}
+
+function Legend({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <legend>
+      <span className="legend-row">
+        {icon}
+        {children}
+      </span>
+    </legend>
+  );
 }
 
 export default async function AdminSettingsPage() {
@@ -35,17 +51,14 @@ export default async function AdminSettingsPage() {
   );
   return (
     <>
-      <header className="stack-sm">
-        <h1>{s.title}</h1>
-        <p className="muted">{s.intro}</p>
-      </header>
-      <ActionForm action={updateSettingsAction}>
+      <AdminPageHead icon={ADMIN_ICONS.settings} title={s.title} intro={s.intro} />
+      <ActionForm action={updateSettingsAction} clientMessages={clientValidationMessages(t)}>
         <fieldset className="form-section">
-          <legend>{s.sectionAvailability}</legend>
+          <Legend icon={<HeartPulse size={20} aria-hidden="true" />}>{s.sectionAvailability}</Legend>
           {num('availabilityExpiryDays', s.availabilityExpiryDays, settings.availabilityExpiryDays, 'availabilityExpiryDays', s.availabilityHint)}
         </fieldset>
         <fieldset className="form-section">
-          <legend>{s.intervalsTitle}</legend>
+          <Legend icon={<Droplets size={20} aria-hidden="true" />}>{s.intervalsTitle}</Legend>
           <Alert tone="info">{s.intervalsNote}</Alert>
           <div className="field-row">
             {DONATION_TYPES.map((type) => (
@@ -54,15 +67,17 @@ export default async function AdminSettingsPage() {
           </div>
         </fieldset>
         <fieldset className="form-section">
-          <legend>{s.sectionRequests}</legend>
+          <Legend icon={<CalendarClock size={20} aria-hidden="true" />}>{s.sectionRequests}</Legend>
           {num('requestExpiryHours', s.requestExpiryHours, settings.requestExpiryHours, 'requestExpiryHours')}
           {num('contactRequestExpiryDays', s.contactRequestExpiryDays, settings.contactRequestExpiryDays, 'contactRequestExpiryDays')}
         </fieldset>
         <fieldset className="form-section">
-          <legend>{s.sectionDonors}</legend>
+          <Legend icon={<UserRoundCheck size={20} aria-hidden="true" />}>{s.sectionDonors}</Legend>
           {num('minimumDonorAge', s.minimumDonorAge, settings.minimumDonorAge, 'minimumDonorAge', s.minimumAgeHint)}
         </fieldset>
-        <SubmitButton label={t.common.actions.save} pendingLabel={t.common.actions.saving} />
+        <div className="form-actions">
+          <SubmitButton label={t.common.actions.save} pendingLabel={t.common.actions.saving} className="btn btn-primary btn-lg" />
+        </div>
       </ActionForm>
     </>
   );

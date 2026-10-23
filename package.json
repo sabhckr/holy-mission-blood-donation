@@ -24,6 +24,7 @@
     "db:setup": "tsx scripts/create-db.ts && tsx scripts/migrate.ts && tsx scripts/seed.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "maintenance": "tsx scripts/maintenance.ts",
+    "report:service-area": "tsx scripts/service-area-report.ts",
     "vercel-build": "tsx scripts/migrate.ts && tsx scripts/seed.ts && next build"
   },
   "dependencies": {

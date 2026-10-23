@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Building2, Search, Siren } from 'lucide-react';
+import { ArrowRight, Building2, Droplet, Hospital, Info, MapPinned, Search, SlidersHorizontal, Siren } from 'lucide-react';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
@@ -13,7 +13,7 @@ import { noDonorFallback } from '@/server/services/requests';
 import { DonorCard } from '@/components/DonorCard';
 import { SearchForm } from '@/components/SearchForm';
 import { locationLabels } from '@/components/consent-labels';
-import { Alert, EmptyState, PageHeader, Pagination } from '@/components/ui';
+import { Alert, BloodGroupBadge, PageHeader, Pagination } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -80,125 +80,201 @@ export default async function DonorSearchPage({ searchParams }: { searchParams: 
   };
   const requestHref = `/requests/new?${new URLSearchParams(Object.entries({ group: filters.group, division: filters.division?.toString(), district: filters.district?.toString(), upazila: filters.upazila?.toString() }).filter(([, v]) => v) as [string, string][]).toString()}`;
 
+  const currentQs = new URLSearchParams(Object.entries({ ...params, page: filters.page && filters.page > 1 ? String(filters.page) : undefined }).filter(([, v]) => v) as [string, string][]).toString();
+  const currentHref = currentQs ? `/donors?${currentQs}` : '/donors';
+  const moreCount = [filters.locality, filters.verified, filters.sort && filters.sort !== 'best' ? filters.sort : undefined].filter(Boolean).length;
+  const anyArea = !!(filters.division || filters.district || filters.upazila);
+  const hasQuery = !!filters.group || anyArea || moreCount > 0;
+  const areaLabel = anyArea ? labelFrom(index, locale, filters.upazila ?? null, filters.district ?? null, filters.division ?? null) : t.search.anyArea;
+
   return (
     <>
       <PageHeader title={t.search.title} intro={t.search.intro} />
-      <div className="container section layout-sidebar">
-        <aside className="card card-tight" aria-labelledby="filters-heading">
-          <h2 id="filters-heading" style={{ fontSize: '1.1rem' }}>
-            {t.search.filters}
-          </h2>
-          <SearchForm
-            locations={locs}
-            bloodGroups={[...BLOOD_GROUPS]}
-            defaults={{ bloodGroup: filters.group, divisionId: filters.division, districtId: filters.district, upazilaId: filters.upazila }}
-            labels={{ bloodGroup: t.common.bloodGroup, anyGroup: t.common.anyBloodGroup, search: t.common.actions.search, location: locationLabels(t) }}
-            extra={
-              <>
-                <div className="field">
-                  <label className="label" htmlFor="sf-locality">
-                    {t.search.localityLabel}
-                  </label>
-                  <p className="hint">{t.search.localityHint}</p>
-                  <input id="sf-locality" className="input" name="locality" defaultValue={filters.locality ?? ''} maxLength={60} />
-                </div>
-                <label className="check">
-                  <input type="checkbox" name="verified" value="1" defaultChecked={filters.verified === '1'} />
-                  <span>{t.search.verifiedOnly}</span>
-                </label>
-                <div className="field">
-                  <label className="label" htmlFor="sf-sort">
-                    {t.search.sort}
-                  </label>
-                  <select id="sf-sort" name="sort" className="select" defaultValue={filters.sort ?? 'best'}>
-                    <option value="best">{t.search.sortBest}</option>
-                    <option value="recent">{t.search.sortRecent}</option>
-                    <option value="newest">{t.search.sortNewest}</option>
-                  </select>
-                </div>
-              </>
-            }
-          />
-          <p style={{ marginTop: 'var(--space-3)' }}>
-            <Link href="/donors">{t.common.actions.clearFilters}</Link>
-          </p>
-        </aside>
-
-        <section className="stack" aria-live="polite">
-          {limited && <Alert tone="warning">{t.search.rateLimited}</Alert>}
-          {result && (
-            <>
-              <Alert tone="info">
-                <p>{t.search.onlyAvailableNote}</p>
-              </Alert>
-              <p style={{ fontWeight: 700, margin: 0 }}>{t.search.resultCount(n(result.total))}</p>
-              {!filters.group && !filters.district && !filters.division && <p className="small muted">{t.search.noFilters}</p>}
-              <p className="small muted">{t.search.privacyNote}</p>
-            </>
-          )}
-          {result && result.items.length > 0 && (
-            <div className="grid grid-2">
-              {result.items.map((d) => (
-                <DonorCard key={d.publicId} donor={d} place={labelFrom(index, locale, d.upazilaId, d.districtId)} i18n={i18n} />
-              ))}
+      <div className="section pub-body">
+        <div className={`container search-layout${hasQuery ? ' has-query' : ''}`}>
+          {hasQuery && (
+            <div className="search-summary card card-tight">
+              {filters.group ? (
+                <BloodGroupBadge group={filters.group} small label={t.common.bloodGroup} />
+              ) : (
+                <span className="search-summary-any">
+                  <Droplet size={20} aria-hidden="true" />
+                </span>
+              )}
+              <p className="search-summary-text">
+                <span className="small muted">{t.search.yourSearch}</span>
+                <strong>{filters.group ? areaLabel : `${t.common.anyBloodGroup} · ${areaLabel}`}</strong>
+              </p>
+              <a className="btn btn-soft btn-sm" href="#search-panel">
+                <SlidersHorizontal size={16} aria-hidden="true" />
+                {t.search.changeSearch}
+              </a>
             </div>
           )}
-          {result && <Pagination page={result.page} pageCount={result.pageCount} basePath="/donors" params={params} t={t} n={n} />}
 
-          {fallback && (
-            <EmptyState icon={<Search size={40} aria-hidden="true" />} title={t.search.noResultsTitle}>
-              <p>{t.search.noResultsBody}</p>
-              <div className="stack" style={{ textAlign: 'left' }}>
-                <div className="card card-tight stack-sm">
-                  <h3>{t.search.fallbackWider}</h3>
-                  <ul className="list-plain list-divided">
-                    {fallback.wider.map((w) => (
-                      <li key={w.level} className="cluster between">
-                        <span>
-                          <strong>{t.search.fallbackLevel[w.level]}</strong>
-                          <br />
-                          <span className="small muted">{t.search.fallbackCount(n(w.total), n(w.available))}</span>
-                        </span>
-                        {/* Search only lists donors who can donate now, so only offer a search that will find someone. */}
-                        {w.available > 0 && (
-                          <Link className="btn btn-sm" href={widerHref(w.level)}>
-                            {t.search.fallbackSearchThere}
-                          </Link>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+          <aside id="search-panel" className="card search-panel" aria-labelledby="search-pub-panel-title">
+            <h2 id="search-pub-panel-title" className="pub-panel-title">
+              <Search size={20} aria-hidden="true" />
+              {t.search.panelTitle}
+            </h2>
+            <SearchForm
+              locations={locs}
+              bloodGroups={[...BLOOD_GROUPS]}
+              defaults={{ bloodGroup: filters.group, divisionId: filters.division, districtId: filters.district, upazilaId: filters.upazila }}
+              labels={{
+                bloodGroup: t.common.bloodGroup,
+                anyGroup: t.common.anyBloodGroup,
+                search: t.common.actions.search,
+                location: locationLabels(t),
+                area: t.search.areaLegend,
+                more: t.search.moreFilters,
+                moreBadge: moreCount > 0 ? t.search.moreFiltersActive(n(moreCount)) : undefined,
+              }}
+              moreOpen={moreCount > 0}
+              extra={
+                <>
+                  <div className="field">
+                    <label className="label" htmlFor="sf-locality">
+                      {t.search.localityLabel}
+                    </label>
+                    <p className="hint">{t.search.localityHint}</p>
+                    <input id="sf-locality" className="input" name="locality" defaultValue={filters.locality ?? ''} maxLength={60} />
+                  </div>
+                  <label className="check">
+                    <input type="checkbox" name="verified" value="1" defaultChecked={filters.verified === '1'} />
+                    <span>{t.search.verifiedOnly}</span>
+                  </label>
+                  <div className="field">
+                    <label className="label" htmlFor="sf-sort">
+                      {t.search.sort}
+                    </label>
+                    <select id="sf-sort" name="sort" className="select" defaultValue={filters.sort ?? 'best'}>
+                      <option value="best">{t.search.sortBest}</option>
+                      <option value="recent">{t.search.sortRecent}</option>
+                      <option value="newest">{t.search.sortNewest}</option>
+                    </select>
+                  </div>
+                </>
+              }
+            />
+            {hasQuery && (
+              <p className="pub-panel-foot">
+                <Link href="/donors">{t.common.actions.clearFilters}</Link>
+              </p>
+            )}
+          </aside>
+
+          <section className="results" aria-labelledby="results-title" aria-live="polite">
+            {limited && (
+              <Alert tone="warning" live>
+                <p>{t.search.rateLimited}</p>
+                <a href={currentHref}>{t.common.actions.tryAgain}</a>
+              </Alert>
+            )}
+            {result && result.total > 0 && (
+              <>
+                <div className="results-head">
+                  <h2 id="results-title" className="results-count">
+                    {t.search.resultCount(n(result.total))}
+                  </h2>
+                  {!hasQuery && <p className="small muted">{t.search.noFilters}</p>}
                 </div>
-                <div className="card card-tight stack-sm">
-                  <h3 className="cluster-sm">
-                    <Building2 size={18} aria-hidden="true" />
-                    {t.search.fallbackCommunities}
-                  </h3>
-                  <p className="small muted">{t.search.fallbackCommunitiesHint}</p>
-                  {fallback.communities.length === 0 ? (
-                    <p className="muted">{t.search.fallbackNoCommunities}</p>
-                  ) : (
-                    <ul className="list-plain list-divided">
-                      {fallback.communities.map((c) => (
-                        <li key={c.id} className="cluster between">
-                          <span>{locale === 'en' && c.nameEn ? c.nameEn : c.name}</span>
-                          <Link className="btn btn-sm" href={`/communities/${c.slug}#contact`}>
-                            {t.search.contactCommunity}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <p className="small muted results-note">
+                  <Info size={16} aria-hidden="true" />
+                  <span>{t.search.resultsNote}</span>
+                </p>
+                <div className="donor-grid">
+                  {result.items.map((d) => (
+                    <DonorCard key={d.publicId} donor={d} place={labelFrom(index, locale, d.upazilaId, d.districtId)} i18n={i18n} />
+                  ))}
                 </div>
-                <Link className="btn btn-primary" href={requestHref}>
-                  <Siren size={18} aria-hidden="true" />
-                  {t.search.fallbackRequest}
-                </Link>
-                <Alert tone="info">{t.search.fallbackHospital}</Alert>
+                <Pagination page={result.page} pageCount={result.pageCount} basePath="/donors" params={params} t={t} n={n} />
+              </>
+            )}
+
+            {fallback && (
+              <div className="no-results stack">
+                <div className="no-results-head">
+                  <span className="no-results-icon">
+                    <Search size={28} aria-hidden="true" />
+                  </span>
+                  <h2 id="results-title">{t.search.noResultsTitle}</h2>
+                  <p>{t.search.noResultsBody}</p>
+                </div>
+
+                <ol className="pub-options">
+                  <li className="card pub-option">
+                    <span className="pub-option-icon">
+                      <MapPinned size={22} aria-hidden="true" />
+                    </span>
+                    <div className="pub-option-body">
+                      <h3>{t.search.fallbackWider}</h3>
+                      <ul className="list-plain list-divided">
+                        {fallback.wider.map((w) => (
+                          <li key={w.level} className="pub-option-row">
+                            <span>
+                              <strong>{t.search.fallbackLevel[w.level]}</strong>
+                              <span className="small muted">{t.search.fallbackCount(n(w.total), n(w.available))}</span>
+                            </span>
+                            {/* Search only lists donors who can donate now, so only offer a search that will find someone. */}
+                            {w.available > 0 && (
+                              <Link className="btn btn-sm btn-soft" href={widerHref(w.level)}>
+                                {t.search.fallbackSearchThere}
+                              </Link>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li className="card pub-option">
+                    <span className="pub-option-icon">
+                      <Building2 size={22} aria-hidden="true" />
+                    </span>
+                    <div className="pub-option-body">
+                      <h3>{t.search.fallbackCommunities}</h3>
+                      <p className="small muted">{t.search.fallbackCommunitiesHint}</p>
+                      {fallback.communities.length === 0 ? (
+                        <p className="small">{t.search.fallbackNoCommunities}</p>
+                      ) : (
+                        <ul className="list-plain list-divided">
+                          {fallback.communities.map((c) => (
+                            <li key={c.id} className="pub-option-row">
+                              <strong>{locale === 'en' && c.nameEn ? c.nameEn : c.name}</strong>
+                              <Link className="btn btn-sm" href={`/communities/${c.slug}#contact`}>
+                                {t.search.contactCommunity}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </li>
+
+                  <li className="card pub-option pub-option-primary">
+                    <span className="pub-option-icon">
+                      <Siren size={22} aria-hidden="true" />
+                    </span>
+                    <div className="pub-option-body">
+                      <h3>{t.search.fallbackRequestTitle}</h3>
+                      <p className="small muted">{t.search.fallbackRequestHint}</p>
+                      <Link className="btn btn-primary btn-block" href={requestHref}>
+                        {t.search.fallbackRequestTitle}
+                        <ArrowRight size={18} aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </li>
+                </ol>
+
+                <p className="pub-meta pub-hospital-note">
+                  <Hospital size={16} aria-hidden="true" />
+                  <span>{t.search.fallbackHospital}</span>
+                </p>
               </div>
-            </EmptyState>
-          )}
-        </section>
+            )}
+          </section>
+        </div>
       </div>
     </>
   );

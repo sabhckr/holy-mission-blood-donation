@@ -1,3 +1,4 @@
+import { LockKeyhole } from 'lucide-react';
 import type { Messages } from '@/i18n/messages';
 import { COMMUNITY_KINDS } from '@/server/domain/constants';
 import { formatBdPhone } from '@/server/domain/phone';
@@ -85,7 +86,7 @@ export function CommunityFormFields({ t, locations, defaults }: { t: Messages; l
 
       <fieldset className="form-section">
         <legend>{c.sectionContact}</legend>
-        <p className="hint">{c.phoneIfNeeded}</p>
+        <p className="acct-legend-hint">{c.phoneIfNeeded}</p>
         <TextField
           name="publicPhone"
           type="tel"
@@ -113,7 +114,14 @@ export function CommunityFormFields({ t, locations, defaults }: { t: Messages; l
 
       <fieldset className="form-section">
         <legend>{c.sectionRepresentative}</legend>
-        <p className="hint">{c.representativeIntro}</p>
+        <p className="acct-legend-hint">
+          <span className="badge badge-info acct-private">
+            <LockKeyhole size={14} aria-hidden="true" />
+            {c.privateLabel}
+          </span>
+          <br />
+          {c.representativeIntro}
+        </p>
         <TextField name="representativeName" label={c.representativeName} required maxLength={120} autoComplete="name" defaultValue={defaults?.representativeName} />
         <TextField name="representativeRole" label={c.representativeRole} hint={c.representativeRoleHint} optionalLabel={opt} maxLength={80} defaultValue={defaults?.representativeRole} />
         <TextField

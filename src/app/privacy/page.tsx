@@ -10,5 +10,5 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PrivacyPage() {
   const { t, date } = await getI18n();
-  return <LegalPage title={t.legal.privacyTitle} intro={t.legal.privacyIntro} updated={t.legal.updated(date(PRIVACY_POLICY_VERSION))} sections={t.legal.privacySections} />;
+  return <LegalPage title={t.legal.privacyTitle} intro={t.legal.privacyIntro} updated={t.legal.updated(date(PRIVACY_POLICY_VERSION))} sections={t.legal.privacySections} tocLabel={t.legal.tocLabel} />;
 }

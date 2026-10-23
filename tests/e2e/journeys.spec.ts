@@ -67,8 +67,8 @@ test('registration shows server-side validation in Bangla', async ({ page }) => 
 test('anonymous blood request: create, keep the private link, then close it', async ({ page }) => {
   await page.goto('/requests/new?group=B%2B');
   await page.getByLabel(L(bn.request.unitsLabel)).fill('2');
-  await page.getByLabel(L(bn.common.location.division)).selectOption({ label: 'চট্টগ্রাম' });
-  await page.getByLabel(L(bn.common.location.district)).selectOption({ label: 'লক্ষ্মীপুর' });
+  // Lakshmipur only: the district is fixed, so only the upazila is chosen.
+  await page.getByLabel(L(bn.common.location.upazila)).selectOption({ label: 'রামগঞ্জ' });
   await page.getByLabel(L(bn.request.hospitalLabel)).fill('লক্ষ্মীপুর সদর হাসপাতাল');
   const tomorrow = new Date(Date.now() + 86400e3).toISOString().slice(0, 10);
   await page.getByLabel(L(bn.request.neededDate)).fill(tomorrow);

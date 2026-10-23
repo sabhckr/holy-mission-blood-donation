@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Check, Copy, KeyRound, Search } from 'lucide-react';
 import { useFormContext } from '../form/ActionForm';
 
 /** Hides the form fields once the request has been created, so the private link stands out. */
@@ -35,27 +36,38 @@ export function CreatedPanel({
     }
   };
   return (
-    <div className="card stack" aria-live="polite">
-      <h2 style={{ fontSize: '1.2rem' }}>{labels.title}</h2>
-      <p>{labels.body}</p>
+    <div className="card created-panel stack" aria-live="polite">
+      <div className="next-note">
+        <span className="pub-icon created-icon">
+          <KeyRound size={22} aria-hidden="true" />
+        </span>
+        <div>
+          <h2>{labels.title}</h2>
+          <p>{labels.body}</p>
+        </div>
+      </div>
       <div className="field">
         <label className="label" htmlFor="manage-link">
           {labels.linkLabel}
         </label>
         <input id="manage-link" className="input" readOnly value={url} onFocus={(e) => e.currentTarget.select()} />
       </div>
-      <div className="cluster">
-        <button type="button" className="btn btn-dark" onClick={copy}>
+      <div className="created-actions">
+        <button type="button" className="btn btn-primary btn-lg" onClick={copy}>
+          {copied ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}
           {copied ? labels.copied : labels.copy}
         </button>
         <Link className="btn" href={managePath}>
           {labels.linkLabel}
         </Link>
-        <Link className="btn" href={`/requests/${String(state.data.publicId)}`}>
-          {labels.view}
-        </Link>
-        <Link className="btn btn-primary" href={`/donors?${search.toString()}`}>
+      </div>
+      <div className="created-next">
+        <Link className="btn btn-soft" href={`/donors?${search.toString()}`}>
+          <Search size={18} aria-hidden="true" />
           {labels.searchDonors}
+        </Link>
+        <Link className="btn btn-ghost" href={`/requests/${String(state.data.publicId)}`}>
+          {labels.view}
         </Link>
       </div>
       {state.data.signedIn ? <p className="small muted">{labels.signedInNote}</p> : null}

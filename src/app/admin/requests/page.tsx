@@ -6,7 +6,10 @@ import { requirePermission } from '@/server/auth/current';
 import { BLOOD_GROUPS, REQUEST_STATUSES } from '@/server/domain/constants';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { adminListRequests } from '@/server/services/requests';
-import { Badge, EmptyState, Pagination } from '@/components/ui';
+import { AdminEmpty, AdminPageHead, FilterBar, FilterSelect } from '@/components/admin/AdminUi';
+import { ADMIN_ICONS } from '@/components/admin/icons';
+import { RequestStatusBadge, UrgencyBadge } from '@/components/admin/StatusBadges';
+import { BloodGroupBadge, Pagination } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -31,102 +34,87 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
   ]);
   const r = t.admin.requests;
   const districts = index.nodes.filter((l) => l.level === 'district').sort((a, b) => (locale === 'bn' ? a.nameBn : a.nameEn).localeCompare(locale === 'bn' ? b.nameBn : b.nameEn));
+  const filtered = !!(f.status || f.group || f.district);
   return (
     <>
-      <header className="stack-sm">
-        <h1>{r.title}</h1>
-        <p className="muted">{r.intro}</p>
-      </header>
-      <form method="get" action="/admin/requests" className="card card-tight form">
-        <div className="field-row">
-          <div className="field">
-            <label className="label" htmlFor="r-status">
-              {r.status}
-            </label>
-            <select id="r-status" className="select" name="status" defaultValue={f.status ?? ''}>
-              <option value="">{t.admin.any}</option>
-              {REQUEST_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {t.common.requestStatus[s]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="r-group">
-              {r.group}
-            </label>
-            <select id="r-group" className="select" name="group" defaultValue={f.group ?? ''}>
-              <option value="">{t.admin.any}</option>
-              {BLOOD_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="r-district">
-              {r.district}
-            </label>
-            <select id="r-district" className="select" name="district" defaultValue={f.district?.toString() ?? ''}>
-              <option value="">{t.admin.any}</option>
-              {districts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {locale === 'bn' ? d.nameBn : d.nameEn}
-                </option>
-              ))}
-            </select>
-          </div>
+      <AdminPageHead icon={ADMIN_ICONS.requests} title={r.title} intro={r.intro} />
+      <FilterBar action="/admin/requests" label={t.admin.filtersLabel} submit={t.admin.filter} clear={t.common.actions.clearFilters} active={filtered}>
+        <FilterSelect id="r-status" name="status" label={r.status} value={f.status} any={t.admin.any} options={REQUEST_STATUSES.map((s) => ({ value: s, label: t.common.requestStatus[s] }))} />
+        <FilterSelect id="r-group" name="group" label={r.group} value={f.group} any={t.admin.any} options={BLOOD_GROUPS.map((g) => ({ value: g, label: g }))} />
+        <FilterSelect
+          id="r-district"
+          name="district"
+          label={r.district}
+          value={f.district?.toString()}
+          any={t.admin.any}
+          options={districts.map((d) => ({ value: String(d.id), label: locale === 'bn' ? d.nameBn : d.nameEn }))}
+        />
+      </FilterBar>
+      <section className="stack" aria-labelledby="request-results">
+        <div className="results-bar">
+          <p id="request-results">{t.admin.results(n(result.total))}</p>
         </div>
-        <div className="form-actions">
-          <button type="submit" className="btn btn-primary">
-            {t.admin.filter}
-          </button>
-          <Link href="/admin/requests">{t.common.actions.clearFilters}</Link>
-        </div>
-      </form>
-      <p style={{ fontWeight: 600 }}>{t.admin.results(n(result.total))}</p>
-      {result.items.length === 0 ? (
-        <EmptyState title={r.empty} />
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">{r.group}</th>
-                <th scope="col">{r.hospital}</th>
-                <th scope="col">{r.district}</th>
-                <th scope="col">{r.needed}</th>
-                <th scope="col">{r.urgency}</th>
-                <th scope="col">{r.status}</th>
-                <th scope="col">{r.community}</th>
-                <th scope="col">{r.created}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.items.map(({ request, communityName, status }) => (
-                <tr key={request.id}>
-                  <td>
-                    <strong>{request.bloodGroup}</strong>
-                  </td>
-                  <td>
-                    <Link href={`/requests/${request.publicId}`}>{request.hospitalName}</Link>
-                  </td>
-                  <td>{labelFrom(index, locale, request.upazilaId, request.districtId)}</td>
-                  <td>{dateTime(request.neededAt)}</td>
-                  <td>
-                    <Badge tone={request.urgency === 'critical' ? 'danger' : request.urgency === 'urgent' ? 'warning' : 'neutral'}>{t.common.urgency[request.urgency]}</Badge>
-                  </td>
-                  <td>{t.common.requestStatus[status]}</td>
-                  <td>{communityName ?? t.admin.none}</td>
-                  <td>{instantDate(request.createdAt)}</td>
+        {result.items.length === 0 ? (
+          <AdminEmpty title={r.empty} hint={filtered ? t.admin.emptyHint : undefined} />
+        ) : (
+          <div className="table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col">{r.hospital}</th>
+                  <th scope="col">
+                    <span className="th-line">{r.urgency}</span>
+                    <span className="th-line">{r.status}</span>
+                  </th>
+                  <th scope="col">
+                    <span className="th-line">{r.needed}</span>
+                    <span className="th-line">{r.created}</span>
+                  </th>
+                  <th scope="col">{r.community}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {result.items.map(({ request, communityName, status }) => (
+                  <tr key={request.id}>
+                    <td className="cell-main">
+                      <div className="donor-cell">
+                        <BloodGroupBadge group={request.bloodGroup} small label={r.group} />
+                        <div>
+                          <Link className="row-link" href={`/requests/${request.publicId}`}>
+                            {request.hospitalName}
+                          </Link>
+                          <span className="cell-sub">{labelFrom(index, locale, request.upazilaId, request.districtId)}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="cell-pair">
+                      <div className="pair-item">
+                        <span className="pair-label">{r.urgency}</span>
+                        <UrgencyBadge urgency={request.urgency} t={t} />
+                      </div>
+                      <div className="pair-item">
+                        <span className="pair-label">{r.status}</span>
+                        <RequestStatusBadge status={status} t={t} />
+                      </div>
+                    </td>
+                    <td className="cell-pair">
+                      <div className="pair-item">
+                        <span className="pair-label">{r.needed}</span>
+                        <strong className="cell-nowrap">{dateTime(request.neededAt)}</strong>
+                      </div>
+                      <div className="pair-item">
+                        <span className="pair-label">{r.created}</span>
+                        <span className="cell-nowrap muted">{instantDate(request.createdAt)}</span>
+                      </div>
+                    </td>
+                    <td data-label={r.community}>{communityName ?? <span className="muted">{t.admin.none}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
       <Pagination page={result.page} pageCount={result.pageCount} basePath="/admin/requests" params={{ status: f.status, group: f.group, district: f.district?.toString() }} t={t} n={n} />
     </>
   );

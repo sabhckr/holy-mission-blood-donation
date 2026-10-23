@@ -31,8 +31,7 @@ export async function registerDonor(page: Page, opts: { name: string; phone: str
   await page.getByLabel(L(t.auth.confirmPassword)).fill(PASSWORD);
   await page.getByLabel(L(t.auth.dateOfBirth)).fill('1995-04-12');
   await page.getByRole('radio', { name: opts.group ?? 'O+', exact: true }).check();
-  await page.getByLabel(L(t.common.location.division)).selectOption({ label: 'চট্টগ্রাম' });
-  await page.getByLabel(L(t.common.location.district)).selectOption({ label: 'লক্ষ্মীপুর' });
+  // Lakshmipur only: the district is fixed, so only the upazila is chosen.
   await page.getByLabel(L(t.common.location.upazila)).selectOption({ label: 'রায়পুর' });
   await page.getByLabel(L(t.auth.availableNow)).check();
   await page.getByLabel(L(t.auth.listedInSearch)).check();

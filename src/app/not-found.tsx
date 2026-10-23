@@ -1,23 +1,28 @@
 import Link from 'next/link';
-import { SearchX } from 'lucide-react';
+import { Home, Search, SearchX } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
-import { EmptyState } from '@/components/ui';
 
 export default async function NotFound() {
   const { t } = await getI18n();
   return (
-    <div className="container section">
-      <EmptyState icon={<SearchX size={40} aria-hidden="true" />} title={t.common.notFound.title}>
-        <p>{t.common.notFound.body}</p>
-        <div className="cluster" style={{ justifyContent: 'center' }}>
-          <Link className="btn btn-primary" href="/">
+    <div className="auth-page">
+      <div className="container auth-column">
+        <div className="card auth-card status-card">
+          <span className="auth-icon">
+            <SearchX size={28} aria-hidden="true" />
+          </span>
+          <h1>{t.common.notFound.title}</h1>
+          <p className="auth-intro">{t.common.notFound.body}</p>
+          <Link className="btn btn-primary btn-lg btn-block" href="/">
+            <Home size={20} aria-hidden="true" />
             {t.common.actions.goHome}
           </Link>
-          <Link className="btn" href="/donors">
+          <Link className="btn btn-block" href="/donors">
+            <Search size={18} aria-hidden="true" />
             {t.common.nav.findDonors}
           </Link>
         </div>
-      </EmptyState>
+      </div>
     </div>
   );
 }

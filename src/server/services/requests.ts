@@ -20,6 +20,7 @@ import { audit } from './audit';
 import { communitiesServingArea, serviceAreaLocationIds } from './communities';
 import { countListedDonors } from './donors';
 import { validateLocationChain } from './locations';
+import { getServiceArea, inServiceDistrict, serviceAreaErrors } from './service-area';
 import { createNotifications, type NewNotification } from './notifications';
 import { getSettings } from './settings';
 
@@ -78,7 +79,9 @@ async function statusEvent(executor: Executor, requestId: string, actor: Actor |
  */
 export async function createBloodRequest(actor: Actor | null, input: BloodRequestInput, meta: ClientMeta = {}) {
   const now = Date.now();
-  const errors = await validateLocationChain(input);
+  const locationErrors = await validateLocationChain(input);
+  // Requests are accepted for hospitals in Lakshmipur only.
+  const errors = Object.keys(locationErrors).length ? locationErrors : await serviceAreaErrors(input);
   if (input.neededAt.getTime() < now - 6 * 3600 * 1000) errors.neededDate = 'pastDate';
   if (input.neededAt.getTime() > now + 60 * 86400 * 1000) errors.neededDate = 'outOfRange';
   if (input.units < 1 || input.units > 20) errors.units = 'outOfRange';
@@ -186,6 +189,9 @@ export async function getRequestForViewer(publicId: string, actor: Actor | null,
   if (!request) return null;
   const access = await requestAccess(actor, request, manageToken);
   if (!request.showOnPublicBoard && !access.canManage && !access.responderDonorId) return null;
+  // Requests saved before the Lakshmipur-only rule stay reachable for the people handling them only.
+  const inServiceArea = request.districtId === (await getServiceArea()).districtId;
+  if (!inServiceArea && !access.canManage && !access.responderDonorId) return null;
   const responses = await db
     .select({ id: requestResponses.id, status: requestResponses.status, message: requestResponses.message, createdAt: requestResponses.createdAt, donorPublicId: donorProfiles.publicId, donorName: donorProfiles.fullName, bloodGroup: donorProfiles.bloodGroup, donorUserId: donorProfiles.userId })
     .from(requestResponses)
@@ -231,6 +237,7 @@ export async function getRequestForViewer(publicId: string, actor: Actor | null,
       contactPreference: request.contactPreference,
       sharePhoneWithResponders: request.sharePhoneWithResponders,
       showOnPublicBoard: request.showOnPublicBoard,
+      inServiceArea,
       // Private fields:
       requesterName: access.canManage ? request.requesterName : null,
       requesterPhone: access.canSeeRequesterPhone ? request.requesterPhone : null,
@@ -249,7 +256,12 @@ export async function getRequestForViewer(publicId: string, actor: Actor | null,
 }
 
 export async function listPublicRequests(filters: { bloodGroup?: BloodGroup | null; divisionId?: number | null; districtId?: number | null; page?: number }) {
-  const conditions: SQL[] = [inArray(bloodRequests.status, OPEN_STATUSES), eq(bloodRequests.showOnPublicBoard, true), sql`${bloodRequests.expiresAt} > now()`];
+  const conditions: SQL[] = [
+    inArray(bloodRequests.status, OPEN_STATUSES),
+    eq(bloodRequests.showOnPublicBoard, true),
+    sql`${bloodRequests.expiresAt} > now()`,
+    inServiceDistrict(bloodRequests.districtId),
+  ];
   if (filters.bloodGroup) conditions.push(eq(bloodRequests.bloodGroup, filters.bloodGroup));
   if (filters.divisionId) conditions.push(eq(bloodRequests.divisionId, filters.divisionId));
   if (filters.districtId) conditions.push(eq(bloodRequests.districtId, filters.districtId));
@@ -297,6 +309,9 @@ export async function respondToRequest(actor: Actor, publicId: string, message: 
     const [donor] = await tx.select().from(donorProfiles).where(eq(donorProfiles.id, actor.donorId!));
     // Only approved, listed donors can offer to help; pending or hidden profiles stay private.
     if (!donor || donor.status !== 'active' || donor.registrationStatus !== 'approved') throw forbidden();
+    // Both the request and the donor must be in Lakshmipur.
+    const area = await getServiceArea(tx);
+    if (request.districtId !== area.districtId || donor.districtId !== area.districtId) throw new AppError('invalid_state', 'outside_service_area');
     const [existing] = await tx.select().from(requestResponses).where(and(eq(requestResponses.requestId, request.id), eq(requestResponses.donorId, donor.id)));
     if (existing && existing.status !== 'withdrawn') throw new AppError('conflict', 'duplicate');
     if (existing) await tx.update(requestResponses).set({ status: 'offered', message, updatedAt: new Date() }).where(eq(requestResponses.id, existing.id));
@@ -479,6 +494,7 @@ export async function communityRequestQueue(
     const area = await serviceAreaLocationIds(communityId);
     if (area.length === 0) return { items: [], total: 0, page: 1, pageCount: 1 };
     conditions.push(
+      inServiceDistrict(bloodRequests.districtId),
       sql`${bloodRequests.assignedCommunityId} is null`,
       inArray(bloodRequests.status, OPEN_STATUSES),
       sql`${bloodRequests.expiresAt} > now()`,
@@ -571,11 +587,10 @@ export async function expireStale(now = new Date()) {
  * Geographic neighbours are approximated by the administrative hierarchy.
  */
 export async function noDonorFallback(input: { bloodGroup?: BloodGroup | null; divisionId?: number | null; districtId?: number | null; upazilaId?: number | null }) {
-  const levels: { level: 'upazila' | 'district' | 'division' | 'country'; filter: Parameters<typeof countListedDonors>[0] }[] = [];
+  const levels: { level: 'upazila' | 'district'; filter: Parameters<typeof countListedDonors>[0] }[] = [];
   if (input.upazilaId) levels.push({ level: 'upazila', filter: { bloodGroup: input.bloodGroup, upazilaId: input.upazilaId } });
-  if (input.districtId) levels.push({ level: 'district', filter: { bloodGroup: input.bloodGroup, districtId: input.districtId } });
-  if (input.divisionId) levels.push({ level: 'division', filter: { bloodGroup: input.bloodGroup, divisionId: input.divisionId } });
-  levels.push({ level: 'country', filter: { bloodGroup: input.bloodGroup } });
+  // Donors are listed in Lakshmipur only, so the widest search is the whole district.
+  levels.push({ level: 'district', filter: { bloodGroup: input.bloodGroup } });
   const wider = await Promise.all(
     levels.map(async (l) => ({ level: l.level, total: await countListedDonors(l.filter), available: await countListedDonors({ ...l.filter, availableOnly: true }) })),
   );

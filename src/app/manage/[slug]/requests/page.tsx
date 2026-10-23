@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Siren } from 'lucide-react';
+import { Clock, Hospital, MapPin, Siren, TriangleAlert } from 'lucide-react';
 import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
 import { requireActor } from '@/server/auth/current';
@@ -9,8 +9,9 @@ import { BLOOD_GROUPS, URGENCIES } from '@/server/domain/constants';
 import { getCommunityContext } from '@/server/services/communities';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { communityRequestQueue } from '@/server/services/requests';
-import { RequestCard } from '@/components/request/RequestCard';
-import { EmptyState, NoAccess, Pagination } from '@/components/ui';
+import { STATUS_TONE } from '@/components/request/RequestCard';
+import { ManageHead } from '@/components/community/ManageHead';
+import { Badge, BloodGroupBadge, EmptyState, NoAccess, Pagination } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -34,7 +35,7 @@ export default async function CommunityRequestQueuePage({
 }) {
   const { slug } = await params;
   const i18n = await getI18n();
-  const { t, n, locale } = i18n;
+  const { t, n, locale, dateTime } = i18n;
   const actor = await requireActor(`/manage/${slug}/requests`);
   const ctx = await getCommunityContext(actor, { slug });
   if (!ctx) notFound();
@@ -57,23 +58,20 @@ export default async function CommunityRequestQueuePage({
   };
 
   return (
-    <div className="stack">
-      <div>
-        <h2>{t.request.queueTitle}</h2>
-        <p className="muted">{t.request.queueIntro}</p>
-      </div>
+    <>
+      <ManageHead title={t.request.queueTitle} intro={t.request.queueIntro} />
       <nav aria-label={t.request.queueTitle}>
-        <ul className="cluster-sm list-plain">
+        <ul className="acct-tabs">
           {SCOPES.map((s) => (
             <li key={s}>
-              <Link className={`btn btn-sm${s === scope ? ' btn-dark' : ''}`} href={tabHref(s)} aria-current={s === scope ? 'page' : undefined}>
+              <Link href={tabHref(s)} aria-current={s === scope ? 'page' : undefined}>
                 {t.request.tabs[s]}
               </Link>
             </li>
           ))}
         </ul>
       </nav>
-      <form method="get" action={base} className="card card-tight cluster" role="search" style={{ alignItems: 'flex-end' }}>
+      <form method="get" action={base} className="card card-tight org-filterbar" role="search" aria-label={t.search.filters}>
         {scope !== 'mine' && <input type="hidden" name="scope" value={scope} />}
         <div className="field">
           <label className="label" htmlFor="q-group">
@@ -105,16 +103,51 @@ export default async function CommunityRequestQueuePage({
           {t.common.actions.apply}
         </button>
       </form>
-      <p style={{ fontWeight: 700, margin: 0 }}>{t.request.resultCount(n(result.total))}</p>
-      {result.items.length === 0 ? (
-        <EmptyState icon={<Siren size={36} aria-hidden="true" />} title={t.request.queueEmpty[scope]} />
-      ) : (
-        <div className="grid grid-2">
-          {result.items.map((r) => (
-            <RequestCard key={r.publicId} item={r} place={labelFrom(index, locale, r.upazilaId, r.districtId)} i18n={i18n} href={`${base}/${r.publicId}`} />
-          ))}
-        </div>
-      )}
+      <section className="stack" aria-labelledby="queue-count">
+        <h3 id="queue-count" className="acct-h3" aria-live="polite">
+          {t.request.resultCount(n(result.total))}
+        </h3>
+        {result.items.length === 0 ? (
+          <EmptyState icon={<Siren size={36} aria-hidden="true" />} title={t.request.queueEmpty[scope]} />
+        ) : (
+          <ul className="org-queue">
+            {result.items.map((r) => (
+              <li key={r.publicId}>
+                <article className="card card-tight org-queue-card">
+                  <BloodGroupBadge group={r.bloodGroup} label={t.common.bloodGroup} />
+                  <div>
+                    <h4 className="acct-item-title">
+                      <Link href={`${base}/${r.publicId}`}>{t.request.detailTitle(r.bloodGroup)}</Link>
+                    </h4>
+                    <div className="acct-item-badges" style={{ marginTop: 0 }}>
+                      <span className={`urgency urgency-${r.urgency}`}>
+                        {r.urgency !== 'normal' && <TriangleAlert size={14} aria-hidden="true" />}
+                        {t.common.urgency[r.urgency]}
+                      </span>
+                      <Badge tone={STATUS_TONE[r.status]}>{t.common.requestStatus[r.status]}</Badge>
+                      <Badge>{t.request.unitsCount(n(r.units))}</Badge>
+                    </div>
+                    <p className="acct-meta">
+                      <span>
+                        <Hospital size={15} aria-hidden="true" />
+                        {r.hospitalName}
+                      </span>
+                      <span>
+                        <MapPin size={15} aria-hidden="true" />
+                        {labelFrom(index, locale, r.upazilaId, r.districtId)}
+                      </span>
+                      <span>
+                        <Clock size={15} aria-hidden="true" />
+                        {t.request.neededAt}: {dateTime(r.neededAt)}
+                      </span>
+                    </p>
+                  </div>
+                </article>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <Pagination
         page={result.page}
         pageCount={result.pageCount}
@@ -123,6 +156,6 @@ export default async function CommunityRequestQueuePage({
         t={t}
         n={n}
       />
-    </div>
+    </>
   );
 }

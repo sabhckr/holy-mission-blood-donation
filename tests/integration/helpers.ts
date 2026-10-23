@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/server/db/client';
-import { donorProfiles, locations, users } from '@/server/db/schema';
+import { bloodRequests, communities, donorProfiles, locations, users } from '@/server/db/schema';
 import type { Actor } from '@/server/policy';
 import { registerAccount, toActor } from '@/server/services/accounts';
 import { approveForTests } from './approve';
@@ -32,6 +32,17 @@ export async function place(districtEn: string, upazilaEn?: string) {
     upazilaId = u.id;
   }
   return { divisionId: district.parentId!, districtId: district.id, upazilaId };
+}
+
+/**
+ * Moves a saved record's address outside Lakshmipur directly in the database — what records saved
+ * before the Lakshmipur-only rule look like. The services themselves refuse such addresses.
+ */
+export async function moveOutsideServiceArea(table: 'donor' | 'request' | 'community', id: string, districtEn = 'Dhaka', upazilaEn?: string) {
+  const area = await place(districtEn, upazilaEn);
+  if (table === 'donor') await db.update(donorProfiles).set(area).where(eq(donorProfiles.id, id));
+  else if (table === 'request') await db.update(bloodRequests).set(area).where(eq(bloodRequests.id, id));
+  else await db.update(communities).set({ divisionId: area.divisionId, districtId: area.districtId }).where(eq(communities.id, id));
 }
 
 export const OPEN_CONSENTS: ConsentInput = {

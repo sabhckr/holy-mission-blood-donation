@@ -109,6 +109,56 @@ function CommunityAreaFieldsInner({
   };
 
   const areaError = err('serviceAreaIds');
+  // Lakshmipur only: the head office district is fixed and the choices are the district or its upazilas.
+  if (divisions.length === 1 && allDistricts.length === 1) {
+    const [fixedDivision, fixedDistrict] = [divisions[0], allDistricts[0]];
+    const upazilas = locations.filter((l) => l[3] === 2 && l[1] === fixedDistrict[0]);
+    const placeError = err('districtId') ?? err('divisionId');
+    return (
+      <div className="stack">
+        <input type="hidden" name="divisionId" value={fixedDivision[0]} />
+        <input type="hidden" name="districtId" value={fixedDistrict[0]} />
+        <div className="field">
+          <span className="label">{labels.hqDistrict}</span>
+          <p className="fixed-place">{fixedDistrict[2]}</p>
+          {placeError && <p className="error-text">{placeError}</p>}
+        </div>
+        <fieldset className="choice-group" aria-describedby={`${id}-areas-hint${areaError ? ` ${id}-areas-error` : ''}`} aria-invalid={areaError ? true : undefined}>
+          <legend>{labels.serviceAreasLegend}</legend>
+          <p className="hint" id={`${id}-areas-hint`}>
+            {labels.serviceAreasHint}
+          </p>
+          <label className="check">
+            <input type="checkbox" name="serviceAreaIds" value={fixedDistrict[0]} checked={areas.includes(fixedDistrict[0])} onChange={(e) => toggle(fixedDistrict[0], e.target.checked)} />
+            <span style={{ fontWeight: 600 }}>{labels.wholeDistrict.replace('{name}', fixedDistrict[2])}</span>
+          </label>
+          <div className="grid grid-2">
+            {upazilas.map((u) => (
+              <label className="check" key={u[0]}>
+                <input type="checkbox" name="serviceAreaIds" value={u[0]} checked={areas.includes(u[0])} onChange={(e) => toggle(u[0], e.target.checked)} />
+                <span>{u[2]}</span>
+              </label>
+            ))}
+          </div>
+          {areas
+            .filter((a) => a !== fixedDistrict[0] && !upazilas.some((u) => u[0] === a))
+            .map((a) => (
+              // Areas saved before the Lakshmipur-only rule: kept visible so they can be removed.
+              <label className="check" key={a}>
+                <input type="checkbox" name="serviceAreaIds" value={a} checked onChange={() => toggle(a, false)} />
+                <span>{describeExtra(a)}</span>
+              </label>
+            ))}
+          {areas.length === 0 && <p className="small muted">{labels.noAreasSelected}</p>}
+          {areaError && (
+            <p className="error-text" id={`${id}-areas-error`}>
+              {areaError}
+            </p>
+          )}
+        </fieldset>
+      </div>
+    );
+  }
   return (
     <>
       <div className="field-row">
