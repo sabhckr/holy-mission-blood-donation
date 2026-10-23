@@ -64,7 +64,7 @@ export async function makeDonor(
     district?: string;
     upazila?: string;
     lastDonation?: { date: string; type: 'whole_blood' | 'platelets' | 'plasma' | 'double_red_cells' } | null;
-    /** Leave the registration pending review (default: approved, as most tests need listed donors). */
+    /** Put the registration back to pending review, as after staff send it back (new donors are approved straight away). */
     pending?: boolean;
   } = {},
 ) {
@@ -86,7 +86,7 @@ export async function makeDonor(
     availableNow: overrides.availableNow ?? true,
     lastDonation: overrides.lastDonation ?? null,
   });
-  if (!overrides.pending) await db.update(donorProfiles).set({ registrationStatus: 'approved' }).where(eq(donorProfiles.id, donor.id));
+  if (overrides.pending) await db.update(donorProfiles).set({ registrationStatus: 'pending', registrationReviewedAt: null }).where(eq(donorProfiles.id, donor.id));
   const actor: Actor = toActor(user, donor.id);
   return { user, donor, actor, phone };
 }

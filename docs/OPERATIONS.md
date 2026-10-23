@@ -17,6 +17,23 @@
   (representative name, role, mobile number, verification information). Existing organisations
   keep working; their leaders are asked for a representative the next time they save the
   organisation's settings, because the form now requires a name and a valid mobile number.
+- Migration `0004_auto_approve_donors` approves donor registrations that were still waiting, for
+  addresses in Lakshmipur only (rejected ones and records outside Lakshmipur are untouched). The
+  rows get the note "Approved automatically: donors no longer need approval", and the migration
+  file shows the one statement that reverses it.
+
+## Making someone an admin on the live site
+
+No password is needed:
+
+1. The person signs up (or already has an account) on the live site with their mobile number.
+2. In Vercel → Project → Settings → Environment Variables, add `ADMIN_PHONE` for Production with
+   that number (several numbers can be separated by commas).
+3. Redeploy (or push). The build's seed step makes the existing account an admin and writes an
+   audit entry; the build log shows only counts, never the number. It never creates accounts and
+   never removes anyone's role. Remove the variable afterwards if you like; it does nothing more.
+
+Alternatively, from a computer with the production connection string: `ADMIN_PHONE=01XXXXXXXXX npm run admin:create`.
 
 ## Backups
 

@@ -36,7 +36,7 @@ export const legal = defineMessages({
         heading: 'কে কী দেখতে পান',
         body: [
           'প্রতিটি তথ্য কে দেখবেন, তা রক্তদাতা নিজেই ঠিক করেন: সবাই, লগ ইন করা ব্যবহারকারীরা, শুধু অনুমোদিত সংগঠনের সমন্বয়করা, বা শুধু তিনি নিজে।',
-          'অ্যাডমিন বা মডারেটর অনুমোদন না দেওয়া পর্যন্ত নতুন রক্তদাতার নাম খোঁজার তালিকায় আসে না।',
+          'নতুন রক্তদাতা নিবন্ধন করলেই খোঁজার তালিকায় আসেন, যদি তিনি তালিকায় থাকতে রাজি থাকেন। দরকার হলে অ্যাডমিন বা মডারেটর কারও তালিকা বন্ধ করতে পারেন।',
           'লগ ইন না করে কেউ কখনো ফোন নম্বর দেখতে পারেন না। প্রতিবার নম্বর দেখা রেকর্ড করা হয়।',
           'জন্মতারিখ কখনো কাউকে দেখানো হয় না। সমন্বয়করা শুধু বয়স দেখতে পান।',
           'নিরাপত্তার জন্য আর অপব্যবহার ঠেকাতে এই ওয়েবসাইটের অ্যাডমিনরা অ্যাকাউন্টের তথ্য দেখতে পারেন। প্রতিবার দেখা রেকর্ড করা হয়।',
@@ -103,7 +103,7 @@ export const legal = defineMessages({
         heading: 'Who sees what',
         body: [
           'Donors choose who can see each piece of information: everyone, signed-in users, approved community coordinators only, or only themselves.',
-          'A new registration does not appear in donor search until an administrator or moderator approves it.',
+          'A new donor appears in donor search as soon as they register, if they agreed to be listed. Administrators or moderators can close a listing when needed.',
           'Nobody can ever see a phone number without signing in. Every number view is recorded.',
           'Dates of birth are never published. Coordinators only see age.',
           'Platform administrators can see account details for safety and abuse prevention; every such view is recorded.',

@@ -29,6 +29,13 @@
       "when": 1792664284559,
       "tag": "0003_organisation_representative",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792741766581,
+      "tag": "0004_auto_approve_donors",
+      "breakpoints": true
     }
   ]
 }

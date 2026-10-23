@@ -59,5 +59,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log('Seeded locations', await seedLocations());
   const { seedInitialOperatingArea } = await import('../src/server/services/operating-areas');
   console.log('Initial operating area (Lakshmipur) added:', await seedInitialOperatingArea());
+  // Optional: ADMIN_PHONE (comma-separated mobile numbers) makes those existing accounts admins.
+  // Only counts are printed, never the numbers.
+  if (process.env.ADMIN_PHONE) {
+    const { promoteAdmins } = await import('../src/server/services/admin-bootstrap');
+    console.log('ADMIN_PHONE:', await promoteAdmins(process.env.ADMIN_PHONE));
+  }
   await closeDb();
 }

@@ -3,7 +3,7 @@
  * platform permission, refuses to act on the staff member's own donor record, and writes an
  * audit entry with the actor, previous and new values and the reason given.
  */
-import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import { db, type Executor } from '../db/client';
 import { auditLogs, availabilityUpdates, donorConsents, donorProfiles, users, verificationEvents } from '../db/schema';
 import { PAGE_SIZE, PRIVACY_POLICY_VERSION, type BloodGroup } from '../domain/constants';
@@ -96,7 +96,8 @@ export async function listDonorsForStaff(actor: Actor, filters: StaffDonorFilter
     .innerJoin(users, eq(users.id, donorProfiles.userId))
     .leftJoin(donorConsents, eq(donorConsents.donorId, donorProfiles.id))
     .where(where)
-    .orderBy(sql`case ${donorProfiles.registrationStatus} when 'pending' then 0 else 1 end`, asc(donorProfiles.createdAt))
+    // Anything waiting for a decision first, then the newest donors.
+    .orderBy(sql`case ${donorProfiles.registrationStatus} when 'pending' then 0 else 1 end`, desc(donorProfiles.createdAt))
     .limit(PAGE_SIZE)
     .offset((page - 1) * PAGE_SIZE);
   return {

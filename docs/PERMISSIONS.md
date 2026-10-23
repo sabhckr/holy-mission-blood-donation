@@ -34,8 +34,9 @@ Extra rules:
 - **Phone numbers** can never be `public` (form, service and a database CHECK constraint).
   Numbers are never part of a page; a signed-in viewer must press "Show number", which is
   rate-limited (20/day) and audit-logged without the number.
-- **Search** lists only donors who opted in (`listed_in_search`), whose registration staff
-  approved, with active listings and accounts, and who are currently marked available. A locality
+- **Search** lists only donors who opted in (`listed_in_search`), whose registration is approved
+  (automatic on registration; staff can reject), with active listings and accounts, in Lakshmipur,
+  and who are currently marked available. A locality
   filter only matches localities visible to that viewer. See [STATUSES.md](STATUSES.md).
 - **Coordinator donor finder** lists only donors who opted in to coordinator contact *and* live
   inside the community's service area. Membership is not required, and several communities can

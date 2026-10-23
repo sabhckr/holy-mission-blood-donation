@@ -52,8 +52,10 @@ medical eligibility are kept apart.
   estimated donation, and cannot be confirmed on two open requests at once (the donor row is locked
   while confirming); confirmed and declined donors are notified. An unfinished request form survives
   a language switch (kept in the browser tab only, cleared on submit).
-- **Registration review** – new donor registrations wait for staff approval before they appear
-  anywhere public; rejected donors see the reason and can correct and resubmit.
+- **No approval for donors** – a new donor is in the donor list as soon as they register (if they
+  chose to be listed and said they can donate now). Only organisations are reviewed by an admin.
+  Staff can still close a donor's listing or reject a registration afterwards; a rejected donor
+  who corrects their details goes back to staff for a decision.
 - **Staff roles** – admins and moderators (donor work only), each page and action guarded by a
   named permission; every staff change records who, when, the previous value and the reason.
 - **Administration** – overview figures, users (suspend, roles with re-authentication, sessions,

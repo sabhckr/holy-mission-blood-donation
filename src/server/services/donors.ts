@@ -88,6 +88,10 @@ async function insertProfile(executor: Executor, userId: string, profile: DonorP
       locality: profile.locality,
       contactPhone: profile.contactPhone,
       preferredContactMethod: profile.preferredContactMethod,
+      // Donors join the list straight away: there is no staff approval step for donors (only
+      // organisations are reviewed). Staff can still unlist or deactivate a donor afterwards.
+      registrationStatus: 'approved',
+      registrationReviewedAt: new Date(),
     })
     .returning();
   await executor.insert(donorConsents).values({ donorId: donor.id, ...consents, policyVersion: PRIVACY_POLICY_VERSION });

@@ -1,26 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { bn, L, Lp, PASSWORD, registerDonor, signIn, signOut, testPhone } from './support';
 
-test('donor registers, staff approve, then they appear in search with privacy and another user reveals the number', async ({ page }) => {
+test('donor registers and is in search straight away, with privacy, and another user reveals the number', async ({ page }) => {
   const donorPhone = testPhone();
   await registerDonor(page, { name: 'রাকিব হাসান', phone: donorPhone, group: 'AB-' });
   await expect(page).toHaveURL(/\/account/);
   await signOut(page);
-
-  // A new registration waits for staff review and is not searchable yet.
-  await page.goto('/donors?group=AB-');
-  await expect(page.getByText(bn.search.noResultsTitle)).toBeVisible();
-  await expect(page.locator('article', { hasText: 'রাকিব হা.' })).toHaveCount(0);
-
-  // An administrator approves the registration in the admin panel.
-  await signIn(page, '01799000001');
-  await page.waitForURL((url) => url.pathname === '/account');
-  await page.goto('/admin/donors?registration=pending');
-  await page.getByRole('link', { name: 'রাকিব হাসান' }).click();
-  await page.waitForURL((url) => url.pathname.startsWith('/admin/donors/'));
-  await page.getByRole('button', { name: bn.admin.donor.approve }).click();
-  await expect(page.getByRole('button', { name: bn.admin.donor.approve })).toHaveCount(0);
-  await signOut(page);
+  // No staff approval: the new donor is searchable immediately (they chose to be listed and can donate now).
 
   // Anonymous search: the donor is found, shown with a shortened name and no number.
   await page.goto('/donors?group=AB-');

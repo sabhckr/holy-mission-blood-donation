@@ -41,6 +41,6 @@ export const REPORT_TARGETS = ['donor', 'community', 'request', 'user'] as const
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 
 /** Version of the privacy notice the donor agreed to. Bump when the notice changes materially. */
-export const PRIVACY_POLICY_VERSION = '2026-10-22';
+export const PRIVACY_POLICY_VERSION = '2026-10-23';
 
 export const PAGE_SIZE = 20;
