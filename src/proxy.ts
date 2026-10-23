@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { SESSION_COOKIE, SESSION_TTL_MS, sessionCookieOptions } from './server/auth/session-cookie';
 
 /**
  * Per-request Content-Security-Policy with a nonce for Next.js' own inline scripts.
  * Styles allow 'unsafe-inline' because React/Next inject style attributes; scripts do not.
+ * Also renews the session cookie on every page visit, so people who use the site stay signed in.
  */
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
@@ -26,13 +28,18 @@ export function proxy(request: NextRequest) {
   requestHeaders.set('Content-Security-Policy', csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
+  // Only on GET: sign-in and sign-out are POSTs that set the cookie themselves.
+  const session = request.cookies.get(SESSION_COOKIE)?.value;
+  if (session && request.method === 'GET') {
+    response.cookies.set(SESSION_COOKIE, session, sessionCookieOptions(new Date(Date.now() + SESSION_TTL_MS)));
+  }
   return response;
 }
 
 export const config = {
   matcher: [
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico|icon.svg|robots.txt).*)',
+      source: '/((?!api|_next/static|_next/image|downloads|favicon.ico|icon.svg|robots.txt).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

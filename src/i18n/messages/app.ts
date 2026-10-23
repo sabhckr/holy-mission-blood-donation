@@ -1,0 +1,53 @@
+import { defineMessages } from '../define';
+
+/** The Android app: the /app download page and the links to it. */
+export const app = defineMessages({
+  bn: {
+    title: 'অ্যাপ ডাউনলোড করুন',
+    metaDescription: 'লক্ষ্মীপুর ব্লাড ডোনেশনের অ্যান্ড্রয়েড অ্যাপ বিনামূল্যে ডাউনলোড করুন।',
+    intro: 'লক্ষ্মীপুর ব্লাড ডোনেশন এখন অ্যান্ড্রয়েড অ্যাপেও আছে। ওয়েবসাইটের সবকিছু অ্যাপে পাবেন, আর একবার লগ ইন করলে বারবার লগ ইন করতে হবে না।',
+    androidTitle: 'অ্যান্ড্রয়েড অ্যাপ',
+    download: 'অ্যাপ ডাউনলোড করুন',
+    details: (version: string, size: string) => `ভার্সন ${version} · ${size} MB · অ্যান্ড্রয়েড ৭ বা তার নতুন ফোনে চলবে`,
+    free: 'সম্পূর্ণ বিনামূল্যে।',
+    stepsTitle: 'যেভাবে ইনস্টল করবেন',
+    steps: [
+      { title: 'ডাউনলোড করুন', body: 'ওপরের বোতাম চাপুন। অ্যাপের ফাইলটি ফোনে ডাউনলোড হবে।' },
+      { title: 'ফাইলটি খুলুন', body: 'ডাউনলোড শেষ হলে নোটিফিকেশন বা Downloads ফোল্ডার থেকে ফাইলটি খুলুন। ফোন অনুমতি চাইলে এই উৎস থেকে ইনস্টল করার অনুমতি দিন।' },
+      { title: 'অ্যাপ খুলুন', body: '“Install” চাপুন। তারপর হোম স্ক্রিন থেকে “Lakshmipur Blood” খুলুন।' },
+    ],
+    warning: 'অ্যাপটি এখনো প্লে স্টোরে নেই, তাই ফোন সতর্কবার্তা দেখাতে পারে। শুধু এই ওয়েবসাইট থেকেই অ্যাপ ডাউনলোড করুন।',
+    iphoneTitle: 'আইফোন',
+    iphoneBody: 'আইফোনের অ্যাপ এখনো নেই। Safari-তে এই ওয়েবসাইট খুলে শেয়ার বোতাম চাপুন, তারপর “Add to Home Screen” বেছে নিন। অ্যাপের মতোই হোম স্ক্রিন থেকে খোলা যাবে।',
+    inAppTitle: 'আপনি অ্যাপেই আছেন',
+    inAppBody: 'আপনি এখন লক্ষ্মীপুর ব্লাড ডোনেশন অ্যাপ ব্যবহার করছেন। আর কিছু ডাউনলোড করতে হবে না।',
+    homeTitle: 'অ্যান্ড্রয়েড অ্যাপ',
+    homeBody: 'ফোনে অ্যাপ রাখুন, দরকারের সময় দ্রুত রক্তদাতা খুঁজুন।',
+    homeButton: 'ডাউনলোড',
+    nav: 'অ্যাপ ডাউনলোড',
+  },
+  en: {
+    title: 'Get the app',
+    metaDescription: 'Download the free Lakshmipur Blood Donation app for Android.',
+    intro: 'Lakshmipur Blood Donation is now an Android app too. Everything on the website is in the app, and once you sign in you stay signed in.',
+    androidTitle: 'Android app',
+    download: 'Download the app',
+    details: (version: string, size: string) => `Version ${version} · ${size} MB · Android 7 or newer`,
+    free: 'Completely free.',
+    stepsTitle: 'How to install',
+    steps: [
+      { title: 'Download', body: 'Tap the button above. The app file downloads to your phone.' },
+      { title: 'Open the file', body: 'When it has downloaded, open the file from the notification or your Downloads folder. If the phone asks, allow installing from this source.' },
+      { title: 'Open the app', body: 'Tap “Install”, then open “Lakshmipur Blood” from your home screen.' },
+    ],
+    warning: 'The app is not on the Play Store yet, so your phone may show a warning. Only download the app from this website.',
+    iphoneTitle: 'iPhone',
+    iphoneBody: 'There is no iPhone app yet. Open this website in Safari, tap the Share button and choose “Add to Home Screen”. It then opens from your home screen like an app.',
+    inAppTitle: 'You are already in the app',
+    inAppBody: 'You are using the Lakshmipur Blood Donation app right now. There is nothing else to download.',
+    homeTitle: 'Android app',
+    homeBody: 'Keep the app on your phone and find a donor quickly when it matters.',
+    homeButton: 'Download',
+    nav: 'Get the app',
+  },
+});

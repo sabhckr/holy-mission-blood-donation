@@ -13,7 +13,7 @@ import {
   verificationEvents,
 } from '../db/schema';
 import { availabilityExpiry, availabilityState, type AvailabilityState } from '../domain/availability';
-import { PAGE_SIZE, PRIVACY_POLICY_VERSION, type BloodGroup, type ContactMethod, type DonationType, type Visibility } from '../domain/constants';
+import { PAGE_SIZE, PRIVACY_POLICY_VERSION, PUBLIC_DONOR_DETAILS, type BloodGroup, type ContactMethod, type DonationType } from '../domain/constants';
 import { ageOn, compareDates, todayInBangladesh } from '../domain/dates';
 import { projectDonor, type DonorConsentsView, type DonorFacts, type DonorView } from '../domain/donor-view';
 import { estimateNextEligible } from '../domain/eligibility';
@@ -39,13 +39,9 @@ export interface DonorProfileInput {
   preferredContactMethod: ContactMethod;
 }
 
+/** What a donor chooses. Their details themselves are always public (PUBLIC_DONOR_DETAILS). */
 export interface ConsentInput {
   listedInSearch: boolean;
-  nameVisibility: Visibility;
-  phoneVisibility: Visibility;
-  localityVisibility: Visibility;
-  donationHistoryVisibility: Visibility;
-  communityVisibility: Visibility;
   allowCoordinatorContact: boolean;
   allowContactRequests: boolean;
 }
@@ -95,7 +91,7 @@ async function insertProfile(executor: Executor, userId: string, profile: DonorP
       registrationReviewedAt: new Date(),
     })
     .returning();
-  await executor.insert(donorConsents).values({ donorId: donor.id, ...consents, policyVersion: PRIVACY_POLICY_VERSION });
+  await executor.insert(donorConsents).values({ donorId: donor.id, ...consents, ...PUBLIC_DONOR_DETAILS, policyVersion: PRIVACY_POLICY_VERSION });
   return donor;
 }
 
@@ -269,7 +265,7 @@ export async function updateConsents(actor: Actor, input: ConsentInput, meta: Cl
     const [before] = await tx.select().from(donorConsents).where(eq(donorConsents.donorId, donor.id));
     await tx
       .update(donorConsents)
-      .set({ ...input, policyVersion: PRIVACY_POLICY_VERSION, consentedAt: new Date(), updatedAt: new Date() })
+      .set({ ...input, ...PUBLIC_DONOR_DETAILS, policyVersion: PRIVACY_POLICY_VERSION, consentedAt: new Date(), updatedAt: new Date() })
       .where(eq(donorConsents.donorId, donor.id));
     const changes = Object.fromEntries(
       Object.entries(input)
@@ -547,37 +543,22 @@ export async function revealDonorPhone(actor: Actor | null, publicId: string, me
 }
 
 /**
- * When the "everyone, no sign-in" phone choice arrived, as recorded by migration 0005 when it ran.
- * Donors whose privacy choice is older are asked once on their dashboard; saying yes or keeping
- * their choice both record a fresh consent, which ends the question.
+ * When donor details became public for everyone, as recorded by migration 0006 when it ran.
+ * Donors who agreed before then are told once on their dashboard; acknowledging records a fresh
+ * consent, which ends the notice.
  */
-export async function publicPhoneChoiceSince(): Promise<Date | null> {
-  const [row] = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, 'public_phone_since'));
+export async function publicDetailsSince(): Promise<Date | null> {
+  const [row] = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, 'public_details_since'));
   return typeof row?.value === 'string' ? new Date(row.value) : null;
 }
 
-/** The donor keeps their current phone choice; records that they have seen the new option. */
-export async function confirmPhoneChoice(actor: Actor, meta: ClientMeta = {}) {
+/** The donor has read that their details are public; records a fresh consent. */
+export async function acknowledgePublicDetails(actor: Actor, meta: ClientMeta = {}) {
   if (actor.status !== 'active') throw forbidden();
   return db.transaction(async (tx) => {
     const donor = await requireOwnDonor(actor, tx);
     await tx.update(donorConsents).set({ policyVersion: PRIVACY_POLICY_VERSION, consentedAt: new Date(), updatedAt: new Date() }).where(eq(donorConsents.donorId, donor.id));
     await audit(tx, { actor, action: 'donor.consents_confirmed', targetType: 'donor', targetId: donor.id, ipHash: meta.ipHash });
-  });
-}
-
-/** The donor lets anyone see their number without signing in (one tap from the dashboard). */
-export async function allowPublicPhone(actor: Actor, meta: ClientMeta = {}) {
-  if (actor.status !== 'active') throw forbidden();
-  return db.transaction(async (tx) => {
-    const donor = await requireOwnDonor(actor, tx);
-    const [before] = await tx.select().from(donorConsents).where(eq(donorConsents.donorId, donor.id));
-    if (before?.phoneVisibility === 'public') return;
-    await tx
-      .update(donorConsents)
-      .set({ phoneVisibility: 'public', policyVersion: PRIVACY_POLICY_VERSION, consentedAt: new Date(), updatedAt: new Date() })
-      .where(eq(donorConsents.donorId, donor.id));
-    await audit(tx, { actor, action: 'donor.consents_updated', targetType: 'donor', targetId: donor.id, metadata: { phoneVisibility: [before?.phoneVisibility ?? null, 'public'] }, ipHash: meta.ipHash });
   });
 }
 

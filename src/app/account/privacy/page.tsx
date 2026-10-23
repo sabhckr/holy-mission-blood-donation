@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, Building2, EyeOff, Globe, LockKeyhole, ShieldCheck, Trash2, UserCheck } from 'lucide-react';
+import { ArrowRight, Check, EyeOff, Globe, LockKeyhole, Trash2 } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { requireActor } from '@/server/auth/current';
 import { getOwnDonorOverview } from '@/server/services/donors';
@@ -19,37 +19,32 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PrivacySettingsPage() {
   const { t, instantDate } = await getI18n();
   const p = t.account.privacy;
-  const v = t.common.visibility;
   const actor = await requireActor('/account/privacy');
   const overview = await getOwnDonorOverview(actor);
-  const levels = [
-    { icon: Globe, title: v.public, hint: p.levelPublic },
-    { icon: UserCheck, title: v.signed_in, hint: p.levelSignedIn },
-    { icon: Building2, title: v.coordinators, hint: p.levelCoordinators },
-    { icon: LockKeyhole, title: v.private, hint: p.levelPrivate },
-  ];
   const paused = overview?.donor.status === 'paused';
 
   return (
     <>
       <PageHead title={p.title} intro={p.intro} />
 
-      <section className="card" aria-labelledby="levels-title">
+      <section className="card" aria-labelledby="public-title">
         <div className="acct-card-head">
-          <IconTile icon={ShieldCheck} />
-          <h2 id="levels-title">{p.levelsTitle}</h2>
+          <IconTile icon={Globe} />
+          <h2 id="public-title">{p.publicTitle}</h2>
         </div>
-        <ul className="acct-levels">
-          {levels.map((l) => (
-            <li key={l.title}>
-              <IconTile icon={l.icon} tone="neutral" small />
-              <span>
-                <strong>{l.title}</strong>
-                <span className="small">{l.hint}</span>
-              </span>
+        <p>{p.publicIntro}</p>
+        <ul className="advice-list">
+          {p.publicItems.map((item) => (
+            <li key={item}>
+              <Check size={18} aria-hidden="true" />
+              <span>{item}</span>
             </li>
           ))}
         </ul>
+        <p className="acct-note" style={{ marginTop: 'var(--space-3)' }}>
+          <EyeOff size={16} aria-hidden="true" />
+          <span>{p.publicLeave}</span>
+        </p>
         <p className="acct-note" style={{ marginTop: 'var(--space-3)' }}>
           <LockKeyhole size={16} aria-hidden="true" />
           <span>{p.neverShown}</span>
@@ -67,14 +62,9 @@ export default async function PrivacySettingsPage() {
             <fieldset className="form-section">
               <legend id="choices-title">{p.formTitle}</legend>
               <ConsentFields
-                labels={consentLabels(t)}
+                labels={{ ...consentLabels(t), publicNotice: undefined }}
                 defaults={{
                   listedInSearch: overview.consents.listedInSearch,
-                  nameVisibility: overview.consents.nameVisibility,
-                  phoneVisibility: overview.consents.phoneVisibility,
-                  localityVisibility: overview.consents.localityVisibility,
-                  donationHistoryVisibility: overview.consents.donationHistoryVisibility,
-                  communityVisibility: overview.consents.communityVisibility,
                   allowCoordinatorContact: overview.consents.allowCoordinatorContact,
                   allowContactRequests: overview.consents.allowContactRequests,
                 }}

@@ -3,12 +3,9 @@ import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { getActorBySessionToken } from '../services/accounts';
 import { can, isAdmin, type Actor, type PlatformPermission } from '../policy';
+import { SESSION_COOKIE, sessionCookieOptions } from './session-cookie';
 
-export const SESSION_COOKIE = 'hm_session';
-
-export function cookieSecure(): boolean {
-  return process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : process.env.NODE_ENV === 'production';
-}
+export { SESSION_COOKIE, cookieSecure } from './session-cookie';
 
 /** The signed-in session for this request (memoised per request). */
 export const getSession = cache(async (): Promise<{ actor: Actor; sessionId: string } | null> => {
@@ -51,7 +48,7 @@ export async function requirePermission(nextPath: string, permission: PlatformPe
 }
 
 export async function setSessionCookie(token: string, expiresAt: Date): Promise<void> {
-  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, secure: cookieSecure(), sameSite: 'lax', path: '/', expires: expiresAt });
+  (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
 }
 
 export async function clearSessionCookie(): Promise<void> {

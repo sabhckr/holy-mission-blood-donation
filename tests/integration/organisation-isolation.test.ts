@@ -140,7 +140,7 @@ describe('cross-organisation isolation', () => {
 
   it('a leader cannot use another organisation’s donor finder or reveal numbers through it', async () => {
     const { a, b, cb } = await twoOrganisations();
-    const donor = await makeDonor({ consents: { phoneVisibility: 'coordinators' } });
+    const donor = await makeDonor();
     await expect(findDonorsForCommunity(a.actor, cb.id, {})).rejects.toMatchObject({ code: 'forbidden' });
     await expect(revealDonorPhoneForCommunity(a.actor, cb.id, donor.donor.publicId)).rejects.toMatchObject({ code: 'forbidden' });
     await expect(revealDonorPhoneForCommunity(b.actor, cb.id, donor.donor.publicId)).resolves.toMatchObject({ phone: donor.phone });

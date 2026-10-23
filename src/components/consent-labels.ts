@@ -7,16 +7,9 @@ export function consentLabels(t: Messages): ConsentLabels {
   return {
     listedInSearch: a.listedInSearch,
     listedInSearchHint: a.listedInSearchHint,
-    nameVisibility: a.nameVisibility,
-    nameVisibilityHint: a.nameVisibilityHint,
-    phoneVisibility: a.phoneVisibility,
-    phoneVisibilityHint: a.phoneVisibilityHint,
-    localityVisibility: a.localityVisibility,
-    historyVisibility: a.historyVisibility,
-    communityVisibility: a.communityVisibility,
+    publicNotice: a.publicNotice,
     allowCoordinatorContact: a.allowCoordinatorContact,
     allowContactRequests: a.allowContactRequests,
-    visibility: { ...t.common.visibility },
   };
 }
 

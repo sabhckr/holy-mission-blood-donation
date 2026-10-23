@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Messages } from '@/i18n/messages';
 
 /** Short footer: service area and safety in one line each, then the essential links. */
-export function SiteFooter({ t }: { t: Messages }) {
+export function SiteFooter({ t, inApp }: { t: Messages; inApp: boolean }) {
   const f = t.common.footer;
   return (
     <footer className="site-footer">
@@ -14,6 +14,7 @@ export function SiteFooter({ t }: { t: Messages }) {
             <span className="footer-credit">{f.developer}</span>
           </div>
           <nav className="footer-links" aria-label={f.links}>
+            {!inApp && <Link href="/app">{t.app.nav}</Link>}
             <Link href="/help">{f.help}</Link>
             <Link href="/communities">{t.common.nav.communities}</Link>
             <Link href="/privacy">{f.privacy}</Link>

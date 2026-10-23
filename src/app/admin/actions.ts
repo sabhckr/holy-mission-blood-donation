@@ -12,7 +12,7 @@ import { getActor } from '@/server/auth/current';
 import { db } from '@/server/db/client';
 import { donorProfiles, users } from '@/server/db/schema';
 import { errorKeyMessage, failure, invalid, keepValues, success, type FormState } from '@/server/actions';
-import { CONTACT_METHODS, PHONE_VISIBILITIES, VISIBILITIES } from '@/server/domain/constants';
+import { CONTACT_METHODS } from '@/server/domain/constants';
 import { can, type Actor, type PlatformPermission } from '@/server/policy';
 import { getRequestMeta } from '@/server/security/request-meta';
 import { issuePasswordReset } from '@/server/services/accounts';
@@ -135,11 +135,6 @@ const profileShape = {
 
 const consentShape = {
   listedInSearch: f.checkbox,
-  nameVisibility: z.enum(VISIBILITIES),
-  phoneVisibility: z.enum(PHONE_VISIBILITIES),
-  localityVisibility: z.enum(VISIBILITIES),
-  donationHistoryVisibility: z.enum(VISIBILITIES),
-  communityVisibility: z.enum(VISIBILITIES),
   allowCoordinatorContact: f.checkbox,
   allowContactRequests: f.checkbox,
 };
@@ -226,11 +221,6 @@ export async function staffCreateDonorAction(_prev: FormState, formData: FormDat
           profile: pickProfile(d),
           consents: {
             listedInSearch: d.listedInSearch,
-            nameVisibility: d.nameVisibility,
-            phoneVisibility: d.phoneVisibility,
-            localityVisibility: d.localityVisibility,
-            donationHistoryVisibility: d.donationHistoryVisibility,
-            communityVisibility: d.communityVisibility,
             allowCoordinatorContact: d.allowCoordinatorContact,
             allowContactRequests: d.allowContactRequests,
           },

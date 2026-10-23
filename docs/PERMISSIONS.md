@@ -20,7 +20,10 @@ reactivate.
 
 ## Donor information
 
-Each donor chooses a visibility for every category: `public`, `signed_in`, `coordinators`, `private`.
+Every listed donor's details are `public`: since migration 0006, registration, the privacy page
+and staff entry always save `public` for each category (`PUBLIC_DONOR_DETAILS`), and donors only
+choose whether to be listed at all. The visibility levels below remain in the code that projects
+donor records, so the table still describes how a non-public value would be treated.
 
 | Viewer \ visibility | public | signed_in | coordinators | private |
 |---|---|---|---|---|
@@ -31,11 +34,10 @@ Each donor chooses a visibility for every category: `public`, `signed_in`, `coor
 
 Extra rules:
 
-- **Phone numbers** follow the donor's choice: `public` (anyone, no sign-in — the default for new
-  donors), `signed_in`, `coordinators` or `private`. Numbers are never part of a page; the viewer
-  presses "Show number", which is rate-limited (20/day per account, or per IP hash for visitors)
-  and audit-logged without the number. Donors whose choice predates the public option are asked
-  once on their dashboard; nothing changes unless they say yes.
+- **Phone numbers** of listed donors can be revealed by anyone, without signing in. Numbers are
+  never part of a page; the viewer presses "Show number", which is rate-limited (20/day per
+  account, or per IP hash for visitors) and audit-logged without the number. Donors who agreed
+  before migration 0006 are told once on their dashboard that their details are now public.
 - **Search** lists only donors who opted in (`listed_in_search`), whose registration is approved
   (automatic on registration; staff can reject), with active listings and accounts, in Lakshmipur,
   and who are currently marked available. A locality

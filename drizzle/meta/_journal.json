@@ -43,6 +43,13 @@
       "when": 1792762143914,
       "tag": "0005_phone_can_be_public",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792766086506,
+      "tag": "0006_everything_public",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bell, Building2, ClipboardList, HeartHandshake, LifeBuoy, LogIn, LogOut, Menu, Search, Settings, ShieldCheck, Siren, UserRound, Users } from 'lucide-react';
+import { Bell, Building2, ClipboardList, HeartHandshake, LifeBuoy, LogIn, LogOut, Menu, Search, Settings, ShieldCheck, Siren, Smartphone, UserRound, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Messages } from '@/i18n/messages';
 import type { Locale } from '@/i18n/config';
@@ -28,6 +28,7 @@ export function SiteHeader({
   currentUrl,
   unread,
   manageSlug,
+  inApp,
 }: {
   t: Messages;
   locale: Locale;
@@ -35,6 +36,7 @@ export function SiteHeader({
   currentUrl: string;
   unread: number;
   manageSlug: string | null;
+  inApp: boolean;
 }) {
   const nav = t.common.nav;
   const path = currentUrl.split('?')[0];
@@ -47,6 +49,7 @@ export function SiteHeader({
     { href: '/communities', label: nav.communities, icon: Users },
     { href: '/communities/new', label: nav.registerCommunity, icon: Building2 },
     { href: '/help', label: nav.help, icon: LifeBuoy },
+    ...(inApp ? [] : [{ href: '/app', label: t.app.nav, icon: Smartphone }]),
   ];
   const mine: NavItem[] = actor
     ? [

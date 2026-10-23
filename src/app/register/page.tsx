@@ -89,14 +89,9 @@ export default async function RegisterDonorPage() {
               <PreferredContactField labels={{ preferredContact: a.preferredContact, contactMethods }} />
               <ConsentFields
                 layout="simple"
-                labels={{ ...consentLabels(t), whoCanSee: a.whoCanSee, contactPermissions: a.contactPermissions, more: a.privacyMore }}
+                labels={{ ...consentLabels(t), more: a.privacyMore }}
                 defaults={{
                   listedInSearch: false,
-                  nameVisibility: 'signed_in',
-                  phoneVisibility: 'public',
-                  localityVisibility: 'public',
-                  donationHistoryVisibility: 'signed_in',
-                  communityVisibility: 'public',
                   allowCoordinatorContact: true,
                   allowContactRequests: true,
                 }}

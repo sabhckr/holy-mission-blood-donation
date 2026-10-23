@@ -1037,41 +1037,6 @@ a.acct-row:hover .acct-row-title {
   color: var(--danger);
 }
 
-/* Who-can-see levels on the privacy page */
-.acct-levels {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-
-@media (min-width: 640px) {
-  .acct-levels {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.acct-levels li {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-}
-
-.acct-levels strong {
-  display: block;
-  line-height: 1.4;
-}
-
-.acct-levels span.small {
-  display: block;
-  color: var(--ink-2);
-  line-height: 1.5;
-}
-
 /* Segmented tabs (request queue scopes) */
 .acct-tabs {
   list-style: none;

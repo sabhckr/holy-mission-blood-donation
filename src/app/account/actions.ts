@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
 import { clearSessionCookie, getActor, getSession } from '@/server/auth/current';
 import { errorKeyMessage, failure, invalid, keepValues, success, type FormState } from '@/server/actions';
-import { CONTACT_METHODS, DONATION_TYPES, PHONE_VISIBILITIES, VISIBILITIES } from '@/server/domain/constants';
+import { CONTACT_METHODS, DONATION_TYPES } from '@/server/domain/constants';
 import type { Actor } from '@/server/policy';
 import { getRequestMeta } from '@/server/security/request-meta';
 import { changePassword, revokeOtherSessions, revokeSessionById, updateAccountBasics } from '@/server/services/accounts';
@@ -14,8 +14,7 @@ import { leaveCommunity } from '@/server/services/communities';
 import { cancelContactRequest, respondToContactRequest } from '@/server/services/contact';
 import { addOwnDonation, correctDonation, submitDonationForReview, voidDonation } from '@/server/services/donations';
 import {
-  allowPublicPhone,
-  confirmPhoneChoice,
+  acknowledgePublicDetails,
   createDonorProfile,
   requestProfileVerification,
   setAvailability,
@@ -86,35 +85,17 @@ export async function setListingPausedAction(_prev: FormState, formData: FormDat
   });
 }
 
-/** One tap: let anyone see the donor's number and call without signing in. */
-export async function allowPublicPhoneAction(): Promise<FormState> {
-  const result = await withActor(async (actor) => {
+/** The donor has read that their details are now shown to everyone; the dashboard stops telling them. */
+export async function acknowledgePublicDetailsAction(): Promise<FormState> {
+  return withActor(async (actor) => {
     try {
-      await allowPublicPhone(actor, await getRequestMeta());
+      await acknowledgePublicDetails(actor, await getRequestMeta());
       refresh();
       return { status: 'success', ts: Date.now() } satisfies FormState;
     } catch (error) {
       return failure(error);
     }
   });
-  // The prompt card disappears once answered, so the confirmation is shown on the dashboard itself.
-  if (result.status === 'success') redirect('/account?phone=public');
-  return result;
-}
-
-/** The donor keeps their phone choice; the dashboard stops asking. */
-export async function keepPhoneChoiceAction(): Promise<FormState> {
-  const result = await withActor(async (actor) => {
-    try {
-      await confirmPhoneChoice(actor, await getRequestMeta());
-      refresh();
-      return { status: 'success', ts: Date.now() } satisfies FormState;
-    } catch (error) {
-      return failure(error);
-    }
-  });
-  if (result.status === 'success') redirect('/account?phone=kept');
-  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,11 +116,6 @@ const profileShape = {
 
 const consentShape = {
   listedInSearch: f.checkbox,
-  nameVisibility: z.enum(VISIBILITIES),
-  phoneVisibility: z.enum(PHONE_VISIBILITIES),
-  localityVisibility: z.enum(VISIBILITIES),
-  donationHistoryVisibility: z.enum(VISIBILITIES),
-  communityVisibility: z.enum(VISIBILITIES),
   allowCoordinatorContact: f.checkbox,
   allowContactRequests: f.checkbox,
 };
@@ -165,11 +141,6 @@ function pickProfile(d: z.output<typeof profileSchema>) {
 function pickConsents(d: z.output<typeof consentSchema>) {
   return {
     listedInSearch: d.listedInSearch,
-    nameVisibility: d.nameVisibility,
-    phoneVisibility: d.phoneVisibility,
-    localityVisibility: d.localityVisibility,
-    donationHistoryVisibility: d.donationHistoryVisibility,
-    communityVisibility: d.communityVisibility,
     allowCoordinatorContact: d.allowCoordinatorContact,
     allowContactRequests: d.allowContactRequests,
   };

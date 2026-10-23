@@ -1,23 +1,20 @@
 import { expect, test } from '@playwright/test';
 import { bn, L, Lp, PASSWORD, registerDonor, signIn, signOut, testPhone } from './support';
 
-test('donor registers and is in search straight away, with privacy, and another user reveals the number', async ({ page }) => {
+test('donor registers and is in search straight away, and a signed-in user reveals the number', async ({ page }) => {
   const donorPhone = testPhone();
   await registerDonor(page, { name: 'রাকিব হাসান', phone: donorPhone, group: 'AB-' });
   await expect(page).toHaveURL(/\/account/);
   await signOut(page);
   // No staff approval: the new donor is searchable immediately (they chose to be listed and can donate now).
 
-  // Anonymous search: the donor is found, shown with a shortened name and no number.
+  // Anonymous search: the donor is found with their full name; the number is not in the page.
   await page.goto('/donors?group=AB-');
   await expect(page.getByText(bn.search.resultCount('১'))).toBeVisible();
-  const card = page.locator('article', { hasText: 'রাকিব হা.' });
-  await expect(card).toBeVisible();
+  await expect(page.locator('article', { hasText: 'রাকিব হাসান' })).toBeVisible();
   await expect(page.locator('body')).not.toContainText(donorPhone.slice(-6));
-  await card.getByRole('link').first().click();
-  await expect(page.getByText(bn.donor.contactSignIn)).toBeVisible();
 
-  // A second person creates an account and reveals the number (consent: signed-in users).
+  // A second person creates an account and reveals the number too.
   const seekerPhone = testPhone();
   await page.goto('/register/account');
   await page.getByLabel(L(bn.auth.displayName)).fill('করিম');
@@ -42,13 +39,13 @@ test('donor registers and is in search straight away, with privacy, and another 
   await expect(page.getByText(bn.errors.invalid_credentials)).toBeVisible();
 });
 
-test('anyone can call a donor who shows their number to everyone, without an account', async ({ page }) => {
+test('anyone can see a donor’s details and call them, without an account', async ({ page }) => {
   const donorPhone = testPhone();
-  await registerDonor(page, { name: 'সুমাইয়া আক্তার', phone: donorPhone, group: 'B-', phoneVisibility: 'public' });
+  await registerDonor(page, { name: 'সুমাইয়া আক্তার', phone: donorPhone, group: 'B-' });
   await signOut(page);
 
   await page.goto('/donors?group=B-');
-  await page.locator('article', { hasText: 'সুমাইয়া আ.' }).getByRole('link').first().click();
+  await page.locator('article', { hasText: 'সুমাইয়া আক্তার' }).getByRole('link').first().click();
   // The number is not in the page until the visitor asks for it.
   await expect(page.locator('body')).not.toContainText(donorPhone.slice(-6));
   await expect(page.getByText(bn.donor.contactSignIn)).toHaveCount(0);

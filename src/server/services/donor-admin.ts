@@ -6,7 +6,7 @@
 import { and, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import { db, type Executor } from '../db/client';
 import { auditLogs, availabilityUpdates, donorConsents, donorProfiles, users, verificationEvents } from '../db/schema';
-import { PAGE_SIZE, PRIVACY_POLICY_VERSION, type BloodGroup } from '../domain/constants';
+import { PAGE_SIZE, PRIVACY_POLICY_VERSION, PUBLIC_DONOR_DETAILS, type BloodGroup } from '../domain/constants';
 import { nameKey, randomPublicId, randomToken } from '../domain/ids';
 import { normalizeBdPhone } from '../domain/phone';
 import { AppError, forbidden, notFound, validationError } from '../errors';
@@ -365,7 +365,7 @@ export async function staffCreateDonor(actor: Actor, input: StaffNewDonorInput, 
         registrationNote: input.note ?? 'Added by staff',
       })
       .returning();
-    await tx.insert(donorConsents).values({ donorId: donor.id, ...input.consents, policyVersion: PRIVACY_POLICY_VERSION });
+    await tx.insert(donorConsents).values({ donorId: donor.id, ...input.consents, ...PUBLIC_DONOR_DETAILS, policyVersion: PRIVACY_POLICY_VERSION });
     if (input.availableNow) {
       const settings = await getSettings(tx);
       await recordAvailability(tx, donor.id, 'available', settings.availabilityExpiryDays, { by: { source: 'staff', userId: actor.userId, reason: 'stated at registration through staff' } });

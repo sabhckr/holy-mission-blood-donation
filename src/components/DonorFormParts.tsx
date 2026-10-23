@@ -1,58 +1,38 @@
 'use client';
 
-import { Eye, MessageCircle } from 'lucide-react';
-import { CheckboxField, RadioGroup, SelectField, TextField, type Option } from './form/fields';
+import { Globe } from 'lucide-react';
+import { CheckboxField, RadioGroup, SelectField, TextField } from './form/fields';
 import { LocationPicker, type CompactLocation, type LocationLabels } from './form/LocationPicker';
 
 export interface ConsentLabels {
   listedInSearch: string;
   listedInSearchHint: string;
-  nameVisibility: string;
-  nameVisibilityHint: string;
-  phoneVisibility: string;
-  phoneVisibilityHint: string;
-  localityVisibility: string;
-  historyVisibility: string;
-  communityVisibility: string;
+  /** Says that the donor's details are shown to everyone (there are no per-detail choices). Omit where the page already says so. */
+  publicNotice?: string;
   allowCoordinatorContact: string;
   allowContactRequests: string;
-  visibility: Record<'public' | 'signed_in' | 'coordinators' | 'private', string>;
-  /** Sub-headings for the grouped layout. */
-  whoCanSee?: string;
-  contactPermissions?: string;
   /** Summary of the collapsible part in the simple layout. */
   more?: string;
 }
 
 export interface ConsentDefaults {
   listedInSearch: boolean;
-  nameVisibility: string;
-  phoneVisibility: string;
-  localityVisibility: string;
-  donationHistoryVisibility: string;
-  communityVisibility: string;
   allowCoordinatorContact: boolean;
   allowContactRequests: boolean;
 }
 
 /**
- * The per-category consent controls, shared by registration and the privacy page.
- * `grouped` (registration) shows "list me" as a big toggle, then the "who can see" choices side by
- * side and the contact permissions under their own sub-headings. Field names and labels are the same.
+ * The donor's choices, shared by registration, the privacy page and staff entry: whether to be in
+ * the donor list, and who may contact them. Everything a listed donor shares is public.
+ * `simple` (registration) shows "list me" as a big toggle and tucks the contact permissions away.
  */
-export function ConsentFields({ labels, defaults, layout = 'list' }: { labels: ConsentLabels; defaults: ConsentDefaults; layout?: 'list' | 'grouped' | 'simple' }) {
-  const all: Option[] = (['public', 'signed_in', 'coordinators', 'private'] as const).map((v) => ({ value: v, label: labels.visibility[v] }));
-  // Phone: "everyone" means anyone can tap "show number" without signing in (still logged).
-  const phone = all;
+export function ConsentFields({ labels, defaults, layout = 'list' }: { labels: ConsentLabels; defaults: ConsentDefaults; layout?: 'list' | 'simple' }) {
   const listed = <CheckboxField name="listedInSearch" label={labels.listedInSearch} hint={labels.listedInSearchHint} defaultChecked={defaults.listedInSearch} />;
-  const selects = (
-    <>
-      <SelectField name="nameVisibility" label={labels.nameVisibility} hint={labels.nameVisibilityHint} options={all} defaultValue={defaults.nameVisibility} required />
-      <SelectField name="phoneVisibility" label={labels.phoneVisibility} hint={labels.phoneVisibilityHint} options={phone} defaultValue={defaults.phoneVisibility} required />
-      <SelectField name="localityVisibility" label={labels.localityVisibility} options={all} defaultValue={defaults.localityVisibility} required />
-      <SelectField name="donationHistoryVisibility" label={labels.historyVisibility} options={all} defaultValue={defaults.donationHistoryVisibility} required />
-      <SelectField name="communityVisibility" label={labels.communityVisibility} options={all} defaultValue={defaults.communityVisibility} required />
-    </>
+  const notice = labels.publicNotice && (
+    <p className="pub-meta">
+      <Globe size={16} aria-hidden="true" />
+      <span>{labels.publicNotice}</span>
+    </p>
   );
   const permissions = (
     <>
@@ -61,50 +41,22 @@ export function ConsentFields({ labels, defaults, layout = 'list' }: { labels: C
     </>
   );
   if (layout === 'simple') {
-    // The two choices everyone should make are shown; the rest keep their defaults unless opened.
     // Fields inside a closed <details> are still submitted.
     return (
       <>
         <div className="pub-toggle">{listed}</div>
-        <SelectField name="phoneVisibility" label={labels.phoneVisibility} hint={labels.phoneVisibilityHint} options={phone} defaultValue={defaults.phoneVisibility} required />
+        {notice}
         <details className="disclosure">
-          <summary>{labels.more ?? labels.whoCanSee}</summary>
-          <div className="stack">
-            <SelectField name="nameVisibility" label={labels.nameVisibility} hint={labels.nameVisibilityHint} options={all} defaultValue={defaults.nameVisibility} required />
-            <SelectField name="localityVisibility" label={labels.localityVisibility} options={all} defaultValue={defaults.localityVisibility} required />
-            <SelectField name="donationHistoryVisibility" label={labels.historyVisibility} options={all} defaultValue={defaults.donationHistoryVisibility} required />
-            <SelectField name="communityVisibility" label={labels.communityVisibility} options={all} defaultValue={defaults.communityVisibility} required />
-            {permissions}
-          </div>
+          <summary>{labels.more}</summary>
+          <div className="stack">{permissions}</div>
         </details>
-      </>
-    );
-  }
-  if (layout === 'grouped') {
-    return (
-      <>
-        <div className="pub-toggle">{listed}</div>
-        {labels.whoCanSee && (
-          <h3 className="pub-subhead">
-            <Eye size={18} aria-hidden="true" />
-            {labels.whoCanSee}
-          </h3>
-        )}
-        <div className="consent-grid">{selects}</div>
-        {labels.contactPermissions && (
-          <h3 className="pub-subhead">
-            <MessageCircle size={18} aria-hidden="true" />
-            {labels.contactPermissions}
-          </h3>
-        )}
-        <div className="stack-sm">{permissions}</div>
       </>
     );
   }
   return (
     <>
       {listed}
-      {selects}
+      {notice}
       {permissions}
     </>
   );

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { safeNextPath, setSessionCookie } from '@/server/auth/current';
 import { failure, invalid, keepValues, type FormState } from '@/server/actions';
-import { CONTACT_METHODS, DONATION_TYPES, PHONE_VISIBILITIES, VISIBILITIES } from '@/server/domain/constants';
+import { CONTACT_METHODS, DONATION_TYPES } from '@/server/domain/constants';
 import { normalizeBdPhone } from '@/server/domain/phone';
 import { AppError } from '@/server/errors';
 import { enforceRateLimit } from '@/server/security/rate-limit';
@@ -80,11 +80,6 @@ const donorSchema = z
     lastDonationType: z.enum(DONATION_TYPES).optional().or(z.literal('')),
     availableNow: f.checkbox,
     listedInSearch: f.checkbox,
-    nameVisibility: z.enum(VISIBILITIES),
-    phoneVisibility: z.enum(PHONE_VISIBILITIES),
-    localityVisibility: z.enum(VISIBILITIES),
-    donationHistoryVisibility: z.enum(VISIBILITIES),
-    communityVisibility: z.enum(VISIBILITIES),
     allowCoordinatorContact: f.checkbox,
     allowContactRequests: f.checkbox,
     acceptPrivacy: f.mustAccept,
@@ -116,11 +111,6 @@ export async function registerDonorAction(_prev: FormState, formData: FormData):
         },
         consents: {
           listedInSearch: d.listedInSearch,
-          nameVisibility: d.nameVisibility,
-          phoneVisibility: d.phoneVisibility,
-          localityVisibility: d.localityVisibility,
-          donationHistoryVisibility: d.donationHistoryVisibility,
-          communityVisibility: d.communityVisibility,
           allowCoordinatorContact: d.allowCoordinatorContact,
           allowContactRequests: d.allowContactRequests,
         },

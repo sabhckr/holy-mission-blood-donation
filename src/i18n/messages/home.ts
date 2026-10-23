@@ -20,8 +20,8 @@ export const home = defineMessages({
     quickDonorBody: 'লক্ষ্মীপুরে রক্তদাতা হিসেবে নাম লেখান',
     quickOrgTitle: 'সংগঠন নিবন্ধন',
     quickOrgBody: 'লক্ষ্মীপুরের রক্তদান সংগঠন যুক্ত করুন',
-    trustTitle: 'গোপনীয়তা রক্ষা করা হয়',
-    trustText: 'রক্তদাতার অনুমতি ছাড়া তাঁর ফোন নম্বর বা ব্যক্তিগত তথ্য কাউকে দেখানো হয় না।',
+    trustTitle: 'লগ ইন ছাড়াই রক্তদাতাকে কল করুন',
+    trustText: 'রক্তদাতার নাম, এলাকা আর ফোন নম্বর সবাই দেখতে পান। জন্মতারিখ বা পুরো ঠিকানা কখনো দেখানো হয় না, আর প্রতিবার নম্বর দেখা রেকর্ড থাকে।',
     notice: 'তালিকায় নাম থাকলেই কেউ রক্ত দেওয়ার জন্য শারীরিকভাবে উপযুক্ত, এমন নয়। রক্ত নেওয়ার আগে হাসপাতালে রক্তদাতার পরীক্ষা করিয়ে নিন।',
   },
   en: {
@@ -43,8 +43,8 @@ export const home = defineMessages({
     quickDonorBody: 'Register as a donor in Lakshmipur',
     quickOrgTitle: 'Register an organisation',
     quickOrgBody: 'Add a blood donation organisation in Lakshmipur',
-    trustTitle: 'Privacy matters',
-    trustText: 'A donor’s phone number and personal details are never shown without their permission.',
+    trustTitle: 'Call a donor without signing in',
+    trustText: 'Every donor’s name, area and phone number are open to everyone. Their date of birth and full address are never shown, and every number view is recorded.',
     notice: 'Being listed as a donor does not mean someone is medically fit to give blood. Have the donor tested at the hospital first.',
   },
 });

@@ -3,9 +3,9 @@
 **রক্ত লাইগলে রক্ত আছে, এত ডরানোর কী আছে?**
 *(Need blood? There is blood. No need to be afraid.)*
 
-A Bangla-first, privacy-respecting community blood donor network for Bangladesh. Donors register
-and decide exactly who may see each piece of their information; people who need blood search by
-blood group and area, post requests, and get help from local blood donation organisations.
+A Bangla-first community blood donor network for Bangladesh. Donors register and are listed with
+their details open to everyone; people who need blood search by blood group and area, call donors
+without an account, post requests, and get help from local blood donation organisations.
 
 This is a community coordination tool. It is **not** a hospital or blood bank, and it never
 decides whether someone is medically eligible to donate.
@@ -29,8 +29,8 @@ medical eligibility are kept apart.
 - **No-donor fallback** – when a search finds nobody: counts in the upazila and the whole of
   Lakshmipur with one-click wider searches, approved communities serving the area, a
   prefilled blood request, and hospital/blood bank advice.
-- **Donors** – registration with explicit per-category consent, profile editing (identity
-  changes reset verification), privacy controls, availability confirmation that expires,
+- **Donors** – registration with explicit consent to be listed, profile editing (identity
+  changes reset verification), listing and contact controls, availability confirmation that expires,
   donation history (self-reported vs verified, corrections keep history), an estimated next
   donation date with a clear medical disclaimer, contact requests, notifications, sessions,
   deactivation and deletion requests.
@@ -52,10 +52,14 @@ medical eligibility are kept apart.
   estimated donation, and cannot be confirmed on two open requests at once (the donor row is locked
   while confirming); confirmed and declined donors are notified. An unfinished request form survives
   a language switch (kept in the browser tab only, cleared on submit).
-- **Call a donor without an account** – only donors need an account. Visitors can tap "Show
-  number" and call any donor whose phone choice is "everyone" (the default for new donors); other
-  donors keep "signed-in only", "coordinators only" or "nobody". Every view is logged and rate
-  limited.
+- **Everything public, no account needed** – only donors need an account. A listed donor's full
+  name, area, donation history, organisations and phone number are shown to everyone; visitors tap
+  "Show number" and call. Every number view is logged and rate limited. A donor who does not want
+  this can leave the donor list (migration 0006 made every earlier choice public and tells existing
+  donors once on their dashboard).
+- **Android app** – a signed APK at `/downloads/lakshmipur-blood.apk`, offered on `/app`, that
+  opens this website (see [mobile/README.md](mobile/README.md)). Sign-ins last a year and renew
+  on every visit, so people are not asked to sign in again.
 - **No approval for donors** – a new donor is in the donor list as soon as they register (if they
   chose to be listed and said they can donate now). Only organisations are reviewed by an admin.
   Staff can still close a donor's listing or reject a registration afterwards; a rejected donor

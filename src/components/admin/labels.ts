@@ -27,15 +27,8 @@ export function adminConsentLabels(t: Messages): ConsentLabels {
   return {
     listedInSearch: c.listedInSearch,
     listedInSearchHint: c.listedInSearchHint,
-    nameVisibility: c.nameVisibility,
-    nameVisibilityHint: c.nameVisibilityHint,
-    phoneVisibility: c.phoneVisibility,
-    phoneVisibilityHint: c.phoneVisibilityHint,
-    localityVisibility: c.localityVisibility,
-    historyVisibility: c.historyVisibility,
-    communityVisibility: c.communityVisibility,
+    publicNotice: c.publicNotice,
     allowCoordinatorContact: c.allowCoordinatorContact,
     allowContactRequests: c.allowContactRequests,
-    visibility: { ...c.visibility },
   };
 }

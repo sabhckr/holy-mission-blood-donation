@@ -4,7 +4,7 @@
 |---|---|---|
 | Passwords | scrypt (N=2¹⁵, r=8, p=1, 64-byte key, random salt), parameters stored per hash; weak/common passwords and passwords containing the phone number refused; length 8–128 | `server/auth/password.ts`, `validation.ts` |
 | Sign-in | Same error for unknown numbers and wrong passwords; a real hash is computed for unknown numbers (timing); 5 failures → 15-minute lock; per-IP and per-number rate limits | `services/accounts.ts`, `security/rate-limit.ts` |
-| Sessions | 256-bit random token in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production); only the SHA-256 is stored; 30-day expiry; password change/reset revokes other sessions; users can list and revoke sessions; suspended accounts lose sessions immediately | `services/accounts.ts`, `auth/current.ts` |
+| Sessions | 256-bit random token in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production); only the SHA-256 is stored; expires after 365 days without use, and every visit renews both the cookie (`proxy.ts`) and the stored session, so active users stay signed in; password change/reset revokes other sessions; users can list and revoke sessions; suspended accounts lose sessions immediately | `services/accounts.ts`, `auth/current.ts`, `auth/session-cookie.ts`, `proxy.ts` |
 | CSRF | Server Actions: Next.js Origin/Host check. Route handlers that change state (`/signout`, admin export) check Origin/Referer. Cookies are `SameSite=Lax`. Language switch only redirects to same-site paths. | `security/origin.ts`, `auth/current.ts#safeNextPath` |
 | Headers | Per-request nonce CSP (`script-src 'self' 'nonce-…' 'strict-dynamic'`, `frame-ancestors 'none'`, `form-action 'self'`, `object-src 'none'`), X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy (no camera/mic/geolocation), COOP, HSTS when secure, no `X-Powered-By` | `proxy.ts`, `next.config.ts` |
 | CORS | No CORS headers are sent, so browsers block cross-origin reads of every route. | — |
@@ -22,9 +22,9 @@
 
 - No live location tracking, no GPS, no full addresses. Donors pick division/district/upazila and
   an optional short area name.
-- Per-category consent (name, phone, area, donation history, communities, search listing,
-  coordinator contact, contact requests) with the policy version and time recorded; changes are
-  audit-logged.
+- A listed donor's name, phone, area, donation history and communities are public (migration
+  0006). Donors consent to being listed, to coordinator contact and to contact requests, with the
+  policy version and time recorded; changes are audit-logged.
 - Patient data is minimised: blood group, quantity, hospital, time, and an optional 300-character
   note that refuses phone numbers. No diagnosis, no identity documents.
 - Deactivation hides everything immediately. A deletion request hides the donor immediately; when

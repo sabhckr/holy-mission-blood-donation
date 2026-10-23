@@ -83,18 +83,16 @@ describe('donor finder', () => {
     await moveOutsideServiceArea('donor', (await makeDonor()).donor.id, 'Dhaka', 'Savar'); // saved before the Lakshmipur-only rule
     const r = await findDonorsForCommunity(leader.actor, c.id, {});
     expect(r.items.map((d) => d.publicId)).toEqual([inArea.donor.publicId]);
-    expect(r.items[0].name).toBe('Rakib Hasan'); // coordinators see names allowed for signed-in users
+    expect(r.items[0].name).toBe('Rakib Hasan');
   });
 
-  it('logs coordinator phone reveals and refuses donors outside the area or with private numbers', async () => {
+  it('logs coordinator phone reveals and refuses donors outside the area', async () => {
     const { actor: admin } = await makeAdmin();
     const leader = await makeUser('Leader');
     const c = await makeCommunity(leader.actor, admin, { areaUpazilas: ['Raipur'] });
-    const coordOnly = await makeDonor({ upazila: 'Raipur', consents: { phoneVisibility: 'coordinators' } });
-    const priv = await makeDonor({ upazila: 'Raipur', consents: { phoneVisibility: 'private' } });
+    const inArea = await makeDonor({ upazila: 'Raipur' });
     const outside = await makeDonor({ upazila: 'Ramganj' });
-    await expect(revealDonorPhoneForCommunity(leader.actor, c.id, coordOnly.donor.publicId)).resolves.toMatchObject({ phone: coordOnly.phone });
-    await expect(revealDonorPhoneForCommunity(leader.actor, c.id, priv.donor.publicId)).rejects.toMatchObject({ code: 'forbidden' });
+    await expect(revealDonorPhoneForCommunity(leader.actor, c.id, inArea.donor.publicId)).resolves.toMatchObject({ phone: inArea.phone });
     await expect(revealDonorPhoneForCommunity(leader.actor, c.id, outside.donor.publicId)).rejects.toMatchObject({ code: 'not_found' });
     const logs = await db.select().from(auditLogs).where(eq(auditLogs.action, 'donor.phone_revealed'));
     expect(logs).toHaveLength(1);

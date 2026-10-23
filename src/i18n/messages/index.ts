@@ -1,6 +1,7 @@
 import type { Locale } from '../config';
 import { account } from './account';
 import { admin } from './admin';
+import { app } from './app';
 import { auth } from './auth';
 import { common } from './common';
 import { community } from './community';
@@ -15,7 +16,7 @@ import { search } from './search';
 import { validation } from './validation';
 
 /** Every namespace, each with `bn` and `en`. Add new namespaces here. */
-export const namespaces = { common, home, search, donor, auth, account, community, request, admin, help, legal, notifications, validation, errors };
+export const namespaces = { common, home, search, donor, auth, account, community, request, admin, help, legal, notifications, validation, errors, app };
 
 type Namespaces = typeof namespaces;
 export type Messages = { [K in keyof Namespaces]: Namespaces[K]['bn'] };

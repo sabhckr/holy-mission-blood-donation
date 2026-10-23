@@ -15,5 +15,5 @@ export default defineConfig([
     files: ['src/server/db/schema.ts'],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'drizzle/**', 'playwright-report/**', 'test-results/**', 'node_modules/**']),
+  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'drizzle/**', 'playwright-report/**', 'test-results/**', 'node_modules/**', 'mobile/**']),
 ]);

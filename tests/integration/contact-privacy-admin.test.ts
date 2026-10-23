@@ -17,7 +17,7 @@ beforeEach(resetDb);
 
 describe('contact requests', () => {
   it('shares numbers only after the donor accepts', async () => {
-    const donor = await makeDonor({ consents: { phoneVisibility: 'private' } });
+    const donor = await makeDonor();
     const seeker = await makeUser('Seeker');
     await expect(sendContactRequest(donor.actor, donor.donor.publicId, 'hello there friend', null)).rejects.toMatchObject({ messageKey: 'cannot_contact_self' });
     const cr = await sendContactRequest(seeker.actor, donor.donor.publicId, 'Need O+ at Raipur tonight', null);

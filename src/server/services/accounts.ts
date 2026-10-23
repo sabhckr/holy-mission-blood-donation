@@ -2,6 +2,7 @@ import { and, desc, eq, gt, isNull, ne, sql } from 'drizzle-orm';
 import { db, type Executor } from '../db/client';
 import { donorProfiles, passwordResetTokens, sessions, users } from '../db/schema';
 import { getDummyHash, hashPassword, verifyPassword } from '../auth/password';
+import { SESSION_TTL_MS } from '../auth/session-cookie';
 import { randomToken, sha256 } from '../domain/ids';
 import { AppError, conflict, forbidden, isUniqueViolation, validationError } from '../errors';
 import type { Actor } from '../policy';
@@ -9,7 +10,6 @@ import { isAdmin } from '../policy';
 import { isWeakPassword } from '../validation';
 import { audit } from './audit';
 
-export const SESSION_TTL_MS = 30 * 24 * 3600 * 1000;
 const LOCK_AFTER_FAILURES = 5;
 const LOCK_MS = 15 * 60 * 1000;
 const RESET_TTL_MS = 24 * 3600 * 1000;
@@ -113,7 +113,8 @@ export async function getActorBySessionToken(token: string): Promise<{ actor: Ac
   if (!row) return null;
   if (row.user.status === 'suspended' || row.user.status === 'deleted') return null;
   if (Date.now() - row.session.lastSeenAt.getTime() > 3600 * 1000) {
-    await db.update(sessions).set({ lastSeenAt: new Date() }).where(eq(sessions.id, id));
+    // Using the site renews the session, so active people are never asked to sign in again.
+    await db.update(sessions).set({ lastSeenAt: new Date(), expiresAt: new Date(Date.now() + SESSION_TTL_MS) }).where(eq(sessions.id, id));
   }
   return { actor: toActor(row.user, row.donorId ?? null), sessionId: id };
 }

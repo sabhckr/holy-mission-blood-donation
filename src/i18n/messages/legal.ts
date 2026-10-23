@@ -35,9 +35,9 @@ export const legal = defineMessages({
       {
         heading: 'কে কী দেখতে পান',
         body: [
-          'প্রতিটি তথ্য কে দেখবেন, তা রক্তদাতা নিজেই ঠিক করেন: সবাই, লগ ইন করা ব্যবহারকারীরা, শুধু অনুমোদিত সংগঠনের সমন্বয়করা, বা শুধু তিনি নিজে।',
+          'রক্ত দরকার এমন মানুষ যেন দ্রুত রক্তদাতা খুঁজে পান, তাই তালিকায় থাকা রক্তদাতার পুরো নাম, রক্তের গ্রুপ, উপজেলা ও এলাকার নাম, ফোন নম্বর, রক্তদানের ইতিহাস আর সংগঠনের নাম যে কেউ দেখতে পান, লগ ইন না করেও।',
           'নতুন রক্তদাতা নিবন্ধন করলেই খোঁজার তালিকায় আসেন, যদি তিনি তালিকায় থাকতে রাজি থাকেন। দরকার হলে অ্যাডমিন বা মডারেটর কারও তালিকা বন্ধ করতে পারেন।',
-          'রক্তদাতা নিজে ঠিক করেন কে তাঁর ফোন নম্বর দেখবে: সবাই (লগ ইন ছাড়াই), শুধু লগ ইন করা মানুষ, শুধু সংগঠনের সমন্বয়ক, নাকি কেউ না। নম্বর পাতায় লেখা থাকে না — "নম্বর দেখুন" চাপলে দেখা যায়, আর প্রতিবার দেখা রেকর্ড করা হয়।',
+          'ফোন নম্বর পাতায় লেখা থাকে না — "নম্বর দেখুন" চাপলে দেখা যায়, আর প্রতিবার দেখা রেকর্ড করা হয়। এগুলো দেখাতে না চাইলে রক্তদাতা নিজেকে তালিকা থেকে সরিয়ে নিতে পারেন।',
           'জন্মতারিখ কখনো কাউকে দেখানো হয় না। সমন্বয়করা শুধু বয়স দেখতে পান।',
           'নিরাপত্তার জন্য আর অপব্যবহার ঠেকাতে এই ওয়েবসাইটের অ্যাডমিনরা অ্যাকাউন্টের তথ্য দেখতে পারেন। প্রতিবার দেখা রেকর্ড করা হয়।',
         ],
@@ -102,9 +102,9 @@ export const legal = defineMessages({
       {
         heading: 'Who sees what',
         body: [
-          'Donors choose who can see each piece of information: everyone, signed-in users, approved community coordinators only, or only themselves.',
+          'So that people who need blood can find donors quickly, a listed donor’s full name, blood group, upazila and area name, phone number, donation history and organisations are shown to anyone, even without signing in.',
           'A new donor appears in donor search as soon as they register, if they agreed to be listed. Administrators or moderators can close a listing when needed.',
-          'Each donor decides who can see their phone number: everyone (no sign-in), signed-in people only, organisation coordinators only, or nobody. Numbers are never printed on the page — they appear only after tapping "Show number", and every view is recorded.',
+          'Phone numbers are never printed on the page — they appear only after tapping "Show number", and every view is recorded. Donors who do not want their details shown can take themselves off the list.',
           'Dates of birth are never published. Coordinators only see age.',
           'Platform administrators can see account details for safety and abuse prevention; every such view is recorded.',
         ],

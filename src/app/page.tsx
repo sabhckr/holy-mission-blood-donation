@@ -1,13 +1,14 @@
 import Link from 'next/link';
-import { Building2, HeartHandshake, MapPin, Search, ShieldCheck, Siren } from 'lucide-react';
+import { Building2, Download, HeartHandshake, MapPin, Search, ShieldCheck, Siren, Smartphone } from 'lucide-react';
 import { getI18n } from '@/i18n/server';
 import { BLOOD_GROUPS } from '@/server/domain/constants';
 import { getServiceArea } from '@/server/services/service-area';
+import { isInApp } from '@/components/site/android-app';
 
-/** Home: where we work, the slogan, donor search and the three main actions. Nothing else. */
+/** Home: where we work, the slogan, donor search, the three main actions and the Android app. */
 export default async function HomePage() {
   const { t, locale } = await getI18n();
-  const area = await getServiceArea();
+  const [area, inApp] = await Promise.all([getServiceArea(), isInApp()]);
   const h = t.home;
   const [titleFirst, ...titleRest] = h.heroTitle.split(', ');
   const quick = [
@@ -102,6 +103,22 @@ export default async function HomePage() {
           </Link>
         ))}
       </nav>
+
+      {!inApp && (
+        <Link className="app-banner" href="/app">
+          <span className="quick-icon">
+            <Smartphone size={21} aria-hidden="true" />
+          </span>
+          <span className="app-banner-text">
+            <strong>{t.app.homeTitle}</strong>
+            <span>{t.app.homeBody}</span>
+          </span>
+          <span className="btn btn-primary btn-sm">
+            <Download size={16} aria-hidden="true" />
+            {t.app.homeButton}
+          </span>
+        </Link>
+      )}
 
       <div className="trust">
         <ShieldCheck size={25} aria-hidden="true" />

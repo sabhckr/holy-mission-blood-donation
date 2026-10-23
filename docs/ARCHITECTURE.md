@@ -61,7 +61,7 @@ docs/                      this folder
 
 - `users` (accounts; phone is the login), `sessions` (hashed tokens), `password_reset_tokens`.
 - `locations` (division → district → upazila, admin-editable).
-- `donor_profiles` (one per user, optional), `donor_consents` (per-category visibility),
+- `donor_profiles` (one per user, optional), `donor_consents` (listing and contact consent; per-category visibility, always `public` since migration 0006),
   `availability_updates` (history; current state is denormalised on the profile),
   `verification_events`.
 - `donations` + `donation_events` (append-only trail; corrections void and re-create).
@@ -73,8 +73,8 @@ docs/                      this folder
 - `audit_logs` (ids and enum values only), `settings` (JSON values), `rate_limits`.
 
 Key constraints: one live donation per donor/date/type (partial unique index), one open request
-per phone/group/district/day, one pending contact request per pair, phone visibility never
-`public`, availability rows must have an expiry exactly when `available`, request units 1–20,
+per phone/group/district/day, one pending contact request per pair,
+availability rows must have an expiry exactly when `available`, request units 1–20,
 location parent/level consistency.
 
 ## Language

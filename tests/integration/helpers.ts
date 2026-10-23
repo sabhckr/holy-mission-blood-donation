@@ -47,11 +47,6 @@ export async function moveOutsideServiceArea(table: 'donor' | 'request' | 'commu
 
 export const OPEN_CONSENTS: ConsentInput = {
   listedInSearch: true,
-  nameVisibility: 'signed_in',
-  phoneVisibility: 'signed_in',
-  localityVisibility: 'public',
-  donationHistoryVisibility: 'public',
-  communityVisibility: 'public',
   allowCoordinatorContact: true,
   allowContactRequests: true,
 };

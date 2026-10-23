@@ -28,6 +28,11 @@
   choice is older are asked once on their dashboard, and answering either way ends the question.
   To undo: `ALTER TABLE donor_consents ADD CONSTRAINT donor_consents_phone_not_public
   CHECK (phone_visibility <> 'public')` after moving any `public` rows back.
+- Migration `0006_everything_public` sets every donor's name, phone, area, donation history and
+  organisation visibility to `public` and makes `public` the default; the forms no longer offer a
+  choice. Earlier choices are overwritten, so they cannot be restored from the database. It
+  replaces `public_phone_since` with `public_details_since` in `settings`: donors who agreed
+  before then are told once on their dashboard, and can leave the donor list from the privacy page.
 
 ## Making someone an admin on the live site
 

@@ -270,12 +270,14 @@ export const donorConsents = pgTable('donor_consents', {
     .references(() => donorProfiles.id, { onDelete: 'cascade' }),
   /** Appear in donor search at all. */
   listedInSearch: boolean('listed_in_search').notNull().default(false),
-  /** Full name; everyone else sees initials. */
-  nameVisibility: visibility('name_visibility').notNull().default('signed_in'),
-  /** Phone number. Never 'public': anonymous visitors cannot see phone numbers. */
-  phoneVisibility: visibility('phone_visibility').notNull().default('private'),
-  localityVisibility: visibility('locality_visibility').notNull().default('signed_in'),
-  donationHistoryVisibility: visibility('donation_history_visibility').notNull().default('private'),
+  /**
+   * Who sees each detail. Always 'public' since migration 0006 (PUBLIC_DONOR_DETAILS): donors no
+   * longer choose per detail. The columns stay so the projection in domain/donor-view keeps working.
+   */
+  nameVisibility: visibility('name_visibility').notNull().default('public'),
+  phoneVisibility: visibility('phone_visibility').notNull().default('public'),
+  localityVisibility: visibility('locality_visibility').notNull().default('public'),
+  donationHistoryVisibility: visibility('donation_history_visibility').notNull().default('public'),
   communityVisibility: visibility('community_visibility').notNull().default('public'),
   /** Approved community coordinators may find and contact the donor for requests in their service area. */
   allowCoordinatorContact: boolean('allow_coordinator_contact').notNull().default(false),

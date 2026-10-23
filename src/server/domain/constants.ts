@@ -9,9 +9,20 @@ export type ContactMethod = (typeof CONTACT_METHODS)[number];
 
 export const VISIBILITIES = ['public', 'signed_in', 'coordinators', 'private'] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
-/** Phone numbers can never be shown to anonymous visitors. */
-/** 'public' = anyone can tap "show number" without signing in (the donor's choice; still logged and rate limited). */
+/** 'public' = anyone can tap "show number" without signing in (still logged and rate limited). */
 export const PHONE_VISIBILITIES = ['public', 'signed_in', 'coordinators', 'private'] as const;
+
+/**
+ * Everything a donor shares is shown to everyone, signed in or not: donors no longer choose per
+ * detail. A donor can still leave the donor list as a whole (listedInSearch).
+ */
+export const PUBLIC_DONOR_DETAILS = {
+  nameVisibility: 'public',
+  phoneVisibility: 'public',
+  localityVisibility: 'public',
+  donationHistoryVisibility: 'public',
+  communityVisibility: 'public',
+} as const satisfies Record<string, Visibility>;
 
 export const URGENCIES = ['critical', 'urgent', 'normal'] as const;
 export type Urgency = (typeof URGENCIES)[number];

@@ -65,11 +65,6 @@ export default async function AdminNewDonorPage() {
             labels={adminConsentLabels(t)}
             defaults={{
               listedInSearch: false,
-              nameVisibility: 'signed_in',
-              phoneVisibility: 'coordinators',
-              localityVisibility: 'public',
-              donationHistoryVisibility: 'signed_in',
-              communityVisibility: 'public',
               allowCoordinatorContact: true,
               allowContactRequests: true,
             }}

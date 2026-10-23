@@ -7,6 +7,7 @@ import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
 import { managedCommunities } from '@/server/services/communities';
 import { unreadCount } from '@/server/services/notifications';
+import { isInApp } from '@/components/site/android-app';
 import { MenuCloser } from '@/components/site/MenuCloser';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { SiteHeader } from '@/components/site/SiteHeader';
@@ -34,6 +35,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { t, locale } = await getI18n();
   const actor = await getActor();
   const currentUrl = (await headers()).get('x-url') ?? '/';
+  const inApp = await isInApp();
   const [unread, managed] = await (actor ? Promise.all([unreadCount(actor.userId), managedCommunities(actor)]) : Promise.resolve([0, []] as const));
   return (
     <html lang={locale} className={bangla.variable}>
@@ -42,11 +44,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {t.common.skipToContent}
         </a>
         <div className="topline" aria-hidden="true" />
-        <SiteHeader t={t} locale={locale} actor={actor} currentUrl={currentUrl} unread={unread} manageSlug={managed[0]?.slug ?? null} />
+        <SiteHeader t={t} locale={locale} actor={actor} currentUrl={currentUrl} unread={unread} manageSlug={managed[0]?.slug ?? null} inApp={inApp} />
         <main id="main" tabIndex={-1}>
           {children}
         </main>
-        <SiteFooter t={t} />
+        <SiteFooter t={t} inApp={inApp} />
         <MenuCloser />
       </body>
     </html>
