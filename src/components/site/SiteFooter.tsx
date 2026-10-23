@@ -9,7 +9,10 @@ export function SiteFooter({ t }: { t: Messages }) {
       <div className="container">
         <p className="footer-safety">{f.safety}</p>
         <div className="footer-inner">
-          <span>{f.copyright(String(new Date().getFullYear()))}</span>
+          <div className="footer-meta">
+            <span>{f.copyright(String(new Date().getFullYear()))}</span>
+            <span className="footer-credit">{f.developer}</span>
+          </div>
           <nav className="footer-links" aria-label={f.links}>
             <Link href="/help">{f.help}</Link>
             <Link href="/communities">{t.common.nav.communities}</Link>

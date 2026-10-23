@@ -2403,3 +2403,14 @@ details.disclosure > :last-child:not(summary) {
   flex: none;
   margin-top: 0.2rem;
 }
+
+/* Copyright and developer credit, one under the other. */
+.footer-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.footer-credit {
+  color: var(--ink-2);
+  font-weight: 600;
+}

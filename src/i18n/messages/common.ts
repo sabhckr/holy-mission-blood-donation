@@ -43,6 +43,7 @@ export const common = defineMessages({
     footer: {
       safety: 'জরুরি হলে আগে কাছের হাসপাতাল বা ব্লাড ব্যাংকে যোগাযোগ করুন। রক্তের জন্য টাকা দেবেন না, নেবেনও না।',
       copyright: (year: string) => `© ${year} Lakshmipur Blood Donation`,
+      developer: 'ডেভেলপার: Ishak Hasan Sabbir',
       about: 'লক্ষ্মীপুরের স্বেচ্ছায় রক্তদাতা আর রক্তদানের সংগঠনগুলোকে এক জায়গায় আনার একটি সামাজিক উদ্যোগ।',
       links: 'দরকারি লিংক',
       contact: 'যোগাযোগ',
@@ -316,6 +317,7 @@ export const common = defineMessages({
     footer: {
       safety: 'In an emergency, contact the nearest hospital or blood bank first. Never pay or take money for blood.',
       copyright: (year: string) => `© ${year} Lakshmipur Blood Donation`,
+      developer: 'Developed by Ishak Hasan Sabbir',
       about: 'A community initiative that brings voluntary blood donors and blood donation organisations together in one place.',
       links: 'Useful links',
       contact: 'Contact',
