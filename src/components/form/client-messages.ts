@@ -14,6 +14,9 @@ export interface ClientValidationMessages {
   passwordMismatch: string;
   invalidLocation: string;
   invalidBloodGroup: string;
+  /** Date fields with min/max (e.g. the 15-day booking window). */
+  pastDate?: string;
+  tooFarAhead?: string;
   /** Visible word shown beside the "*" of required fields (e.g. "আবশ্যক"). */
   requiredMark?: string;
 }
@@ -31,6 +34,8 @@ export function clientValidationMessages(t: Messages): ClientValidationMessages 
     passwordMismatch: v.passwordMismatch,
     invalidLocation: v.invalidLocation,
     invalidBloodGroup: v.invalidBloodGroup,
+    pastDate: v.pastDate,
+    tooFarAhead: v.tooFarAhead,
     requiredMark: t.common.states.required,
   };
 }

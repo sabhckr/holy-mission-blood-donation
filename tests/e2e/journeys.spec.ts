@@ -81,6 +81,11 @@ test('anonymous blood request: create, keep the private link, then close it', as
   const link = page.locator('a[href*="/requests/manage/"]').first();
   await expect(link).toBeVisible();
   const href = await link.getAttribute('href');
+  // Only after the server saved it: the real reference number, the saved details and an honest note.
+  await expect(page.getByText(bn.request.createdSavedTitle)).toBeVisible();
+  await expect(page.locator('.ref-id')).toHaveText(/^[a-z0-9]{6,20}$/);
+  await expect(page.locator('.created-saved')).toContainText('লক্ষ্মীপুর সদর হাসপাতাল');
+  await expect(page.getByText(bn.request.createdNotGuaranteed)).toBeVisible();
 
   // Public board shows it without the requester's details.
   await page.goto('/requests');

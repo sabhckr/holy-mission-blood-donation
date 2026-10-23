@@ -14,6 +14,7 @@ import { CheckboxField, SelectField, TextField } from '@/components/form/fields'
 import { AreaFields, BloodGroupField, ConsentFields, DateOfBirthField, PreferredContactField } from '@/components/DonorFormParts';
 import { consentLabels, locationLabels } from '@/components/consent-labels';
 import { clientValidationMessages } from '@/components/form/client-messages';
+import { FormDraft } from '@/components/form/FormDraft';
 import { PageHeader } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -48,6 +49,7 @@ export default async function RegisterDonorPage() {
       <div className="section pub-body">
         <div className="container container-narrow">
           <ActionForm action={registerDonorAction} aria-label={a.registerTitle} clientMessages={clientValidationMessages(t)} className="form step-form">
+            <FormDraft name="donor-registration" />
             <fieldset className="form-section">
               <Step n={n(1)} title={a.stepIdentity} />
               <TextField name="fullName" label={a.fullName} autoComplete="name" required maxLength={80} />

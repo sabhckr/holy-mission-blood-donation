@@ -612,7 +612,19 @@ details.disclosure.acct-more p {
   min-width: 0;
 }
 
-/* Eligibility countdown */
+/* Eligibility countdown. In a narrow card (e.g. half of a two-column row) the ring sits above the
+   text instead of squeezing it into a thin column. */
+section:has(> .acct-eligibility-body) {
+  container-type: inline-size;
+}
+
+@container (max-width: 420px) {
+  .acct-eligibility-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .acct-eligibility-body {
   display: flex;
   gap: var(--space-4);
@@ -1805,11 +1817,6 @@ a.acct-row:hover .acct-row-title {
   font-size: clamp(1.3rem, 3.6vw, 1.65rem);
 }
 
-/* Touch targets stay at least 44px tall inside the account and management areas. */
-.acct-shell .btn-sm {
-  min-height: 44px;
-}
-
 /* "Any group" spans the whole row above the eight blood-group tiles. */
 .choice-grid > .org-any-tile {
   grid-column: 1 / -1;
@@ -1819,11 +1826,6 @@ a.acct-row:hover .acct-row-title {
   font-family: var(--font);
   font-size: 1rem;
   min-height: 48px;
-}
-
-/* Filter button lines up with the 50px inputs beside it. */
-.org-filter .btn {
-  min-height: 50px;
 }
 
 .org-head-side {

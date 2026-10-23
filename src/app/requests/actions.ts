@@ -9,6 +9,8 @@ import { bangladeshDateTimeToInstant } from '@/server/domain/dates';
 import { enforceRateLimit } from '@/server/security/rate-limit';
 import { getRequestMeta } from '@/server/security/request-meta';
 import { changeRequestStatus, createBloodRequest, respondToRequest, setResponseStatus, withdrawResponse } from '@/server/services/requests';
+import { countListedDonors } from '@/server/services/donors';
+import { placeLabel } from '@/server/services/location-index';
 import { f, formDataToObject, parseInput } from '@/server/validation';
 import { getI18n } from '@/i18n/server';
 
@@ -84,12 +86,26 @@ export async function createRequestAction(_prev: FormState, formData: FormData):
     );
     revalidatePath('/requests');
     revalidatePath('/');
-    const { t } = await getI18n();
+    const { t, locale, n, dateTime } = await getI18n();
+    // Honest numbers only: donors who are listed and have said they can give now. Nobody has
+    // agreed to this request yet.
+    const [available, availableInUpazila, place] = await Promise.all([
+      countListedDonors({ bloodGroup: request.bloodGroup, availableOnly: true }),
+      request.upazilaId ? countListedDonors({ bloodGroup: request.bloodGroup, upazilaId: request.upazilaId, availableOnly: true }) : Promise.resolve(null),
+      placeLabel(locale, request.upazilaId, request.districtId),
+    ]);
     return success(t.request.createdMessage, {
       publicId: request.publicId,
       managePath: `/requests/manage/${manageToken}`,
       bloodGroup: request.bloodGroup,
-      districtId: request.districtId,
+      units: n(request.units),
+      neededAt: dateTime(request.neededAt),
+      hospitalName: request.hospitalName,
+      place,
+      upazilaId: request.upazilaId,
+      available,
+      availableLabel: n(available),
+      availableInUpazila: availableInUpazila === null ? null : n(availableInUpazila),
       signedIn: !!actor,
     });
   } catch (error) {

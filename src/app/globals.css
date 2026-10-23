@@ -46,7 +46,10 @@
   --space-6: 2rem;
   --space-7: 3rem;
   --space-8: 4.5rem;
-  --tabbar-h: 66px;
+  /* One height scale for every control, so buttons and fields line up in a row. */
+  --control-h: 48px;
+  --control-h-sm: 44px;
+  --control-h-lg: 54px;
   --font: var(--font-bangla), 'Noto Sans Bengali', 'Hind Siliguri', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-latin: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -390,7 +393,7 @@ strong {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: var(--control-h-sm);
   min-width: 46px;
   padding: 0.4rem 0.75rem;
   color: var(--ink);
@@ -544,7 +547,7 @@ strong {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 46px;
+  min-height: var(--control-h);
   padding: 0.55rem 1.15rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
@@ -635,7 +638,7 @@ strong {
 }
 
 .btn-sm {
-  min-height: 38px;
+  min-height: var(--control-h-sm);
   padding: 0.3rem 0.8rem;
   font-size: 0.92rem;
   border-radius: 10px;
@@ -646,7 +649,7 @@ strong {
 }
 
 .btn-lg {
-  min-height: 54px;
+  min-height: var(--control-h-lg);
   padding: 0.75rem 1.5rem;
   font-size: 1.08rem;
   border-radius: 14px;
@@ -815,7 +818,7 @@ strong {
 .select,
 .textarea {
   width: 100%;
-  min-height: 50px;
+  min-height: var(--control-h);
   padding: 0.6rem 0.85rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -2040,7 +2043,7 @@ details.disclosure > :last-child:not(summary) {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 50px;
+  min-height: var(--control-h);
   margin: 0;
   padding: 0.6rem 0.85rem;
   border: 1px dashed var(--line-strong);
@@ -2157,7 +2160,6 @@ details.disclosure > :last-child:not(summary) {
 }
 
 .filters .btn {
-  min-height: 50px;
   white-space: nowrap;
 }
 
@@ -2328,4 +2330,57 @@ details.disclosure > :last-child:not(summary) {
 .results-note svg {
   flex: none;
   margin-top: 0.25rem;
+}
+
+/* ---------- Request created: saved details and honest donor counts ---------- */
+
+.created-saved {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: var(--space-4);
+}
+
+.created-saved h3 {
+  font-size: 1rem;
+  margin-bottom: var(--space-3);
+}
+
+.ref-id {
+  font-family: var(--font-latin);
+  letter-spacing: 0.04em;
+  font-size: 1.05rem;
+}
+
+.created-match,
+.created-guarantee {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  line-height: 1.6;
+}
+
+.created-match {
+  background: var(--success-soft);
+  border: 1px solid var(--success-line);
+  color: #24583c;
+}
+
+.created-match p {
+  margin: 0;
+}
+
+.created-guarantee {
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-line);
+  color: #5a3600;
+}
+
+.created-match svg,
+.created-guarantee svg {
+  flex: none;
+  margin-top: 0.2rem;
 }

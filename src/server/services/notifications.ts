@@ -8,6 +8,8 @@ import type { Locale } from '@/i18n/config';
 
 /** Notification kinds. Text for each lives in the `notifications` i18n namespace. */
 export type NotificationKind =
+  | 'response_confirmed'
+  | 'response_declined'
   | 'contact_request_received'
   | 'contact_request_accepted'
   | 'contact_request_declined'
@@ -34,6 +36,7 @@ export type NotificationKind =
 
 /** Kinds worth sending outside the app (SMS/email) when a provider is configured. */
 const EXTERNAL_KINDS = new Set<NotificationKind>([
+  'response_confirmed',
   'contact_request_received',
   'contact_request_accepted',
   'request_assigned',

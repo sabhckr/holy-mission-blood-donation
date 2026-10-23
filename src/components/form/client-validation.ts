@@ -70,6 +70,11 @@ export function validateForm(form: HTMLFormElement, messages: ClientValidationMe
       continue;
     }
     if (el instanceof HTMLInputElement && el.type === 'tel' && !normalizeBdPhone(value)) add(el.name, messages.invalidPhone);
+    // Same window as the server ('YYYY-MM-DD' strings compare in date order). The server checks again.
+    if (el instanceof HTMLInputElement && el.type === 'date' && el.closest('[data-date-window]')) {
+      if (el.min && value < el.min && messages.pastDate) add(el.name, messages.pastDate);
+      else if (el.max && value > el.max && messages.tooFarAhead) add(el.name, messages.tooFarAhead);
+    }
   }
 
   // Same rule as the server: both typed and different. Passwords are compared untrimmed.

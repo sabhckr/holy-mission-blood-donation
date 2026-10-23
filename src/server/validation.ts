@@ -10,7 +10,7 @@ const KNOWN_KEYS = new Set([
   'required', 'invalid', 'tooShort', 'tooLong', 'invalidPhone', 'invalidEmail', 'invalidDate', 'futureDate', 'pastDate',
   'tooYoung', 'tooOld', 'beforeBirth', 'passwordTooShort', 'passwordTooLong', 'passwordMismatch', 'passwordWeak',
   'invalidLocation', 'invalidBloodGroup', 'mustAccept', 'outOfRange', 'invalidUrl', 'invalidNumber', 'phoneTaken',
-  'emailTaken', 'duplicateDonation', 'nameTaken', 'wrongPassword', 'noPhoneInText', 'outsideServiceArea',
+  'emailTaken', 'duplicateDonation', 'nameTaken', 'wrongPassword', 'noPhoneInText', 'outsideServiceArea', 'pastTime', 'tooFarAhead',
 ]);
 
 export type ParseResult<T> = { ok: true; data: T } | { ok: false; fieldErrors: FieldErrors };

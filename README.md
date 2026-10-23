@@ -42,9 +42,16 @@ medical eligibility are kept apart.
   a donor finder limited to consenting donors in the service area, request queues, taking and
   assigning requests, escalation to other communities, and reports that separate verified from
   self-reported data.
-- **Blood requests** – blood group, units, location, hospital, time, urgency, contact
-  preference, private management link for anonymous requesters, donor offers (never treated as
-  agreement until confirmed), status history, expiry, duplicate protection.
+- **Blood requests (booking)** – blood group, units, location, hospital, date and time, urgency,
+  contact preference, private management link for anonymous requesters, donor offers (never treated
+  as agreement until confirmed), status history, expiry, duplicate protection. The needed date must
+  be **today through 15 days ahead, inclusive, in Bangladesh time** (`src/server/domain/booking.ts`),
+  checked on the server and in the form. After saving, the requester sees the real reference number,
+  the saved details and an honest count of donors who have said they can give (none of whom has
+  agreed yet). A donor is refused for a date their own donation records put before their next
+  estimated donation, and cannot be confirmed on two open requests at once (the donor row is locked
+  while confirming); confirmed and declined donors are notified. An unfinished request form survives
+  a language switch (kept in the browser tab only, cleared on submit).
 - **Registration review** – new donor registrations wait for staff approval before they appear
   anywhere public; rejected donors see the reason and can correct and resubmit.
 - **Staff roles** – admins and moderators (donor work only), each page and action guarded by a

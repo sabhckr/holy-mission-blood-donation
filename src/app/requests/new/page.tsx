@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getI18n } from '@/i18n/server';
 import { getActor } from '@/server/auth/current';
 import { BLOOD_GROUPS, REQUEST_CONTACT_PREFERENCES, URGENCIES } from '@/server/domain/constants';
+import { bookingWindow } from '@/server/domain/booking';
 import { APP_TIME_ZONE, todayInBangladesh } from '@/server/domain/dates';
 import { compactLocations, getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { approvedCommunityById, approvedCommunityOptions, ownContact } from '@/server/services/request-queries';
@@ -13,6 +14,7 @@ import { CheckboxField, RadioGroup, SelectField, TextArea, TextField } from '@/c
 import { LocationPicker } from '@/components/form/LocationPicker';
 import { locationLabels } from '@/components/consent-labels';
 import { CreatedPanel, HideOnSuccess } from '@/components/request/CreatedPanel';
+import { FormDraft } from '@/components/form/FormDraft';
 import { RequestAdvice } from '@/components/request/RequestAdvice';
 import { clientValidationMessages } from '@/components/form/client-messages';
 import { Alert, PageHeader } from '@/components/ui';
@@ -52,7 +54,7 @@ function defaultNeeded() {
 }
 
 export default async function NewRequestPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { t, n, locale } = await getI18n();
+  const { t, n, locale, date } = await getI18n();
   const sp = await searchParams;
   const prefill = prefillSchema.parse(Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
   const actor = await getActor();
@@ -64,6 +66,7 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
     approvedCommunityOptions(),
   ]);
   const needed = defaultNeeded();
+  const window = bookingWindow();
   const opt = t.common.states.optional;
   const communityName = (c: { name: string; nameEn: string | null }) => (locale === 'en' && c.nameEn ? c.nameEn : c.name);
   // Keep the division consistent with a prefilled district.
@@ -76,16 +79,29 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
         <div className="container container-narrow stack">
           <RequestAdvice t={t} />
           <ActionForm action={createRequestAction} aria-label={t.request.newTitle} clientMessages={clientValidationMessages(t)} className="form step-form">
+            <FormDraft name="blood-request" />
             <CreatedPanel
               labels={{
                 title: t.request.createdTitle,
                 body: t.request.createdBody,
                 linkLabel: t.request.manageLinkLabel,
+                openLink: t.request.openLink,
                 copy: t.request.copyLink,
                 copied: t.request.copied,
                 view: t.request.viewRequest,
                 searchDonors: t.request.searchDonorsNow,
                 signedInNote: t.request.signedInManageNote,
+                reference: t.request.createdReference,
+                savedTitle: t.request.createdSavedTitle,
+                group: t.request.bloodGroup,
+                units: t.request.unitsLabel,
+                when: t.request.neededDate,
+                hospital: t.request.hospitalLabel,
+                place: t.request.createdPlace,
+                notGuaranteed: t.request.createdNotGuaranteed,
+                matchesNone: t.request.matchesNone,
+                matches: t.request.matchesTemplate,
+                matchesUpazila: t.request.matchesUpazilaTemplate,
               }}
             />
             <HideOnSuccess>
@@ -111,8 +127,17 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
                   <LocationPicker locations={locs} labels={locationLabels(t)} defaults={{ divisionId, districtId: prefill.district, upazilaId: prefill.upazila }} />
                 </div>
                 <TextField name="hospitalName" label={t.request.hospitalLabel} hint={t.request.hospitalHint} required maxLength={120} />
-                <div className="field-row">
-                  <TextField name="neededDate" type="date" label={t.request.neededDate} required min={todayInBangladesh()} defaultValue={needed.date} />
+                <div className="field-row" data-date-window>
+                  <TextField
+                    name="neededDate"
+                    type="date"
+                    label={t.request.neededDate}
+                    hint={t.request.neededDateHint(date(window.first, 'short'), date(window.last, 'short'))}
+                    required
+                    min={window.first}
+                    max={window.last}
+                    defaultValue={needed.date}
+                  />
                   <TextField name="neededTime" type="time" label={t.request.neededTime} hint={t.request.neededTimeHint} required defaultValue={needed.time} />
                 </div>
               </fieldset>

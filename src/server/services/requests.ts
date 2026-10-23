@@ -5,6 +5,7 @@ import {
   communities,
   communityMemberships,
   contactRequests,
+  donations,
   donorProfiles,
   requestEscalations,
   requestResponses,
@@ -12,6 +13,9 @@ import {
   users,
 } from '../db/schema';
 import { PAGE_SIZE, type BloodGroup, type RequestContactPreference, type RequestStatus, type Urgency } from '../domain/constants';
+import { neededAtError } from '../domain/booking';
+import { compareDates, todayInBangladesh } from '../domain/dates';
+import { estimateNextEligible } from '../domain/eligibility';
 import { randomPublicId, randomToken, sha256 } from '../domain/ids';
 import { AppError, forbidden, isUniqueViolation, notFound, validationError } from '../errors';
 import { can, communityCapabilities, isAdmin, type Actor } from '../policy';
@@ -82,8 +86,9 @@ export async function createBloodRequest(actor: Actor | null, input: BloodReques
   const locationErrors = await validateLocationChain(input);
   // Requests are accepted for hospitals in Lakshmipur only.
   const errors = Object.keys(locationErrors).length ? locationErrors : await serviceAreaErrors(input);
-  if (input.neededAt.getTime() < now - 6 * 3600 * 1000) errors.neededDate = 'pastDate';
-  if (input.neededAt.getTime() > now + 60 * 86400 * 1000) errors.neededDate = 'outOfRange';
+  // Today up to 15 days ahead, Bangladesh time (see domain/booking.ts).
+  const dateError = neededAtError(input.neededAt, new Date(now));
+  if (dateError) errors.neededDate = dateError;
   if (input.units < 1 || input.units > 20) errors.units = 'outOfRange';
   if (Object.keys(errors).length) throw validationError(errors);
   const settings = await getSettings();
@@ -306,7 +311,8 @@ export async function respondToRequest(actor: Actor, publicId: string, message: 
     const request = await loadRequest(tx, publicId, true);
     if (!OPEN_STATUSES.includes(effectiveStatus(request))) throw new AppError('invalid_state');
     if (request.createdByUserId === actor.userId) throw forbidden();
-    const [donor] = await tx.select().from(donorProfiles).where(eq(donorProfiles.id, actor.donorId!));
+    // Locked so an offer and a confirmation elsewhere cannot race past the booking checks.
+    const [donor] = await tx.select().from(donorProfiles).where(eq(donorProfiles.id, actor.donorId!)).for('update');
     // Only approved, listed donors can offer to help; pending or hidden profiles stay private.
     if (!donor || donor.status !== 'active' || donor.registrationStatus !== 'approved') throw forbidden();
     // Both the request and the donor must be in Lakshmipur.
@@ -314,6 +320,7 @@ export async function respondToRequest(actor: Actor, publicId: string, message: 
     if (request.districtId !== area.districtId || donor.districtId !== area.districtId) throw new AppError('invalid_state', 'outside_service_area');
     const [existing] = await tx.select().from(requestResponses).where(and(eq(requestResponses.requestId, request.id), eq(requestResponses.donorId, donor.id)));
     if (existing && existing.status !== 'withdrawn') throw new AppError('conflict', 'duplicate');
+    await assertDonorCanBeBooked(tx, donor.id, request);
     if (existing) await tx.update(requestResponses).set({ status: 'offered', message, updatedAt: new Date() }).where(eq(requestResponses.id, existing.id));
     else await tx.insert(requestResponses).values({ requestId: request.id, donorId: donor.id, message });
     await statusEvent(tx, request.id, actor, 'response', request.status, request.status, 'offered');
@@ -343,17 +350,66 @@ export async function withdrawResponse(actor: Actor, publicId: string, meta: Cli
 }
 
 /** Requester, coordinators or admins confirm (after talking to the donor) or decline an offer. */
+/**
+ * The checks before a donor is offered or confirmed for a request:
+ * - their own donation records must not put their estimated next donation date after the day the
+ *   blood is needed (an estimate only; the hospital still screens the donor), and
+ * - they must not already be confirmed for another request that is still open.
+ * Callers lock the donor row first so two confirmations cannot both pass.
+ */
+async function assertDonorCanBeBooked(executor: Executor, donorId: string, request: BloodRequest) {
+  const settings = await getSettings(executor);
+  const history = await executor
+    .select({ donatedOn: donations.donatedOn, donationType: donations.donationType, status: donations.status })
+    .from(donations)
+    .where(eq(donations.donorId, donorId));
+  const estimate = estimateNextEligible(history, settings.eligibilityIntervals, todayInBangladesh());
+  if (estimate.state !== 'no_data' && compareDates(estimate.nextDate, todayInBangladesh(request.neededAt)) > 0) {
+    throw new AppError('invalid_state', 'not_eligible_by_date');
+  }
+  const [other] = await executor
+    .select({ id: requestResponses.id })
+    .from(requestResponses)
+    .innerJoin(bloodRequests, eq(bloodRequests.id, requestResponses.requestId))
+    .where(
+      and(
+        eq(requestResponses.donorId, donorId),
+        eq(requestResponses.status, 'confirmed'),
+        sql`${bloodRequests.id} <> ${request.id}`,
+        inArray(bloodRequests.status, OPEN_STATUSES),
+        sql`${bloodRequests.expiresAt} > now()`,
+      ),
+    )
+    .limit(1);
+  if (other) throw new AppError('conflict', 'donor_already_booked');
+}
+
 export async function setResponseStatus(actor: Actor | null, publicId: string, responseId: string, status: 'confirmed' | 'declined', manageToken: string | null, meta: ClientMeta = {}) {
   return db.transaction(async (tx) => {
-    const request = await loadRequest(tx, publicId);
+    const request = await loadRequest(tx, publicId, true);
     const access = await requestAccess(actor, request, manageToken, tx);
     if (!access.canManage) throw forbidden();
-    const updated = await tx
-      .update(requestResponses)
-      .set({ status, updatedAt: new Date() })
-      .where(and(eq(requestResponses.id, responseId), eq(requestResponses.requestId, request.id), inArray(requestResponses.status, ['offered', 'confirmed', 'declined'])))
-      .returning({ id: requestResponses.id });
-    if (updated.length === 0) throw notFound();
+    if (!OPEN_STATUSES.includes(effectiveStatus(request))) throw new AppError('invalid_state');
+    const [response] = await tx
+      .select()
+      .from(requestResponses)
+      .where(and(eq(requestResponses.id, responseId), eq(requestResponses.requestId, request.id), inArray(requestResponses.status, ['offered', 'confirmed', 'declined'])));
+    if (!response) throw notFound();
+    if (response.status === status) return;
+    // One confirmation at a time per donor: lock the donor before checking other bookings.
+    const [donor] = await tx.select().from(donorProfiles).where(eq(donorProfiles.id, response.donorId)).for('update');
+    if (!donor) throw notFound();
+    if (status === 'confirmed') await assertDonorCanBeBooked(tx, donor.id, request);
+    await tx.update(requestResponses).set({ status, updatedAt: new Date() }).where(eq(requestResponses.id, response.id));
+    await statusEvent(tx, request.id, actor, 'response', request.status, request.status, status);
+    await createNotifications(tx, [
+      {
+        userId: donor.userId,
+        kind: status === 'confirmed' ? 'response_confirmed' : 'response_declined',
+        data: { group: request.bloodGroup, place: request.hospitalName, date: todayInBangladesh(request.neededAt) },
+        link: `/requests/${request.publicId}`,
+      } as NewNotification,
+    ]);
     await audit(tx, { actor, action: `request.response_${status}`, targetType: 'request', targetId: request.id, ipHash: meta.ipHash });
   });
 }
