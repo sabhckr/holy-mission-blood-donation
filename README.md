@@ -52,6 +52,10 @@ medical eligibility are kept apart.
   estimated donation, and cannot be confirmed on two open requests at once (the donor row is locked
   while confirming); confirmed and declined donors are notified. An unfinished request form survives
   a language switch (kept in the browser tab only, cleared on submit).
+- **Call a donor without an account** – only donors need an account. Visitors can tap "Show
+  number" and call any donor whose phone choice is "everyone" (the default for new donors); other
+  donors keep "signed-in only", "coordinators only" or "nobody". Every view is logged and rate
+  limited.
 - **No approval for donors** – a new donor is in the donor list as soon as they register (if they
   chose to be listed and said they can donate now). Only organisations are reviewed by an admin.
   Staff can still close a donor's listing or reject a registration afterwards; a rejected donor

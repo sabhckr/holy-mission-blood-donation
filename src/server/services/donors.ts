@@ -8,6 +8,7 @@ import {
   donations,
   donorConsents,
   donorProfiles,
+  settings,
   users,
   verificationEvents,
 } from '../db/schema';
@@ -41,7 +42,7 @@ export interface DonorProfileInput {
 export interface ConsentInput {
   listedInSearch: boolean;
   nameVisibility: Visibility;
-  phoneVisibility: Exclude<Visibility, 'public'>;
+  phoneVisibility: Visibility;
   localityVisibility: Visibility;
   donationHistoryVisibility: Visibility;
   communityVisibility: Visibility;
@@ -263,7 +264,6 @@ export async function updateDonorProfile(actor: Actor, input: DonorProfileInput,
 
 export async function updateConsents(actor: Actor, input: ConsentInput, meta: ClientMeta = {}) {
   if (actor.status !== 'active') throw forbidden();
-  if ((input.phoneVisibility as string) === 'public') throw validationError({ phoneVisibility: 'invalid' });
   return db.transaction(async (tx) => {
     const donor = await requireOwnDonor(actor, tx);
     const [before] = await tx.select().from(donorConsents).where(eq(donorConsents.donorId, donor.id));
@@ -524,8 +524,13 @@ export async function countListedDonors(filters: Pick<DonorSearchFilters, 'blood
  * Reveals a donor's number to a signed-in viewer when the donor's consent allows it.
  * Every reveal is audit-logged; the caller must apply the phoneReveal rate limit.
  */
-export async function revealDonorPhone(actor: Actor, publicId: string, meta: ClientMeta = {}) {
-  if (actor.status !== 'active') throw forbidden();
+/**
+ * Reveals a donor's number when their consent allows this viewer to see it: anyone (no sign-in)
+ * for 'public', signed-in users for 'signed_in'. Every reveal is audit-logged (without the number);
+ * the caller applies the phoneReveal rate limit (per account, or per IP hash for visitors).
+ */
+export async function revealDonorPhone(actor: Actor | null, publicId: string, meta: ClientMeta = {}) {
+  if (actor && actor.status !== 'active') throw forbidden();
   const [row] = await db
     .select({ donor: donorProfiles, consent: donorConsents, accountStatus: users.status, inServiceArea: donorInServiceArea() })
     .from(donorProfiles)
@@ -539,6 +544,41 @@ export async function revealDonorPhone(actor: Actor, publicId: string, meta: Cli
   if (!listed || view.phoneAccess !== 'reveal') throw forbidden();
   await audit(db, { actor, action: 'donor.phone_revealed', targetType: 'donor', targetId: row.donor.id, metadata: { context: 'public_profile' }, ipHash: meta.ipHash });
   return { phone: row.donor.contactPhone, method: row.donor.preferredContactMethod };
+}
+
+/**
+ * When the "everyone, no sign-in" phone choice arrived, as recorded by migration 0005 when it ran.
+ * Donors whose privacy choice is older are asked once on their dashboard; saying yes or keeping
+ * their choice both record a fresh consent, which ends the question.
+ */
+export async function publicPhoneChoiceSince(): Promise<Date | null> {
+  const [row] = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, 'public_phone_since'));
+  return typeof row?.value === 'string' ? new Date(row.value) : null;
+}
+
+/** The donor keeps their current phone choice; records that they have seen the new option. */
+export async function confirmPhoneChoice(actor: Actor, meta: ClientMeta = {}) {
+  if (actor.status !== 'active') throw forbidden();
+  return db.transaction(async (tx) => {
+    const donor = await requireOwnDonor(actor, tx);
+    await tx.update(donorConsents).set({ policyVersion: PRIVACY_POLICY_VERSION, consentedAt: new Date(), updatedAt: new Date() }).where(eq(donorConsents.donorId, donor.id));
+    await audit(tx, { actor, action: 'donor.consents_confirmed', targetType: 'donor', targetId: donor.id, ipHash: meta.ipHash });
+  });
+}
+
+/** The donor lets anyone see their number without signing in (one tap from the dashboard). */
+export async function allowPublicPhone(actor: Actor, meta: ClientMeta = {}) {
+  if (actor.status !== 'active') throw forbidden();
+  return db.transaction(async (tx) => {
+    const donor = await requireOwnDonor(actor, tx);
+    const [before] = await tx.select().from(donorConsents).where(eq(donorConsents.donorId, donor.id));
+    if (before?.phoneVisibility === 'public') return;
+    await tx
+      .update(donorConsents)
+      .set({ phoneVisibility: 'public', policyVersion: PRIVACY_POLICY_VERSION, consentedAt: new Date(), updatedAt: new Date() })
+      .where(eq(donorConsents.donorId, donor.id));
+    await audit(tx, { actor, action: 'donor.consents_updated', targetType: 'donor', targetId: donor.id, metadata: { phoneVisibility: [before?.phoneVisibility ?? null, 'public'] }, ipHash: meta.ipHash });
+  });
 }
 
 /** Everything the donor's own dashboard needs. */

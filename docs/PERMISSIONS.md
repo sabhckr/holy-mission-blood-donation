@@ -24,16 +24,18 @@ Each donor chooses a visibility for every category: `public`, `signed_in`, `coor
 
 | Viewer \ visibility | public | signed_in | coordinators | private |
 |---|---|---|---|---|
-| Visitor | ✓ | – | – | – |
+| Visitor | ✓ (incl. phone numbers set to public) | – | – | – |
 | User (incl. coordinators on public pages) | ✓ | ✓ | – | – |
 | Coordinator inside their donor finder · Staff who manage donor records | ✓ | ✓ | ✓ | – |
 | The donor | ✓ | ✓ | ✓ | ✓ |
 
 Extra rules:
 
-- **Phone numbers** can never be `public` (form, service and a database CHECK constraint).
-  Numbers are never part of a page; a signed-in viewer must press "Show number", which is
-  rate-limited (20/day) and audit-logged without the number.
+- **Phone numbers** follow the donor's choice: `public` (anyone, no sign-in — the default for new
+  donors), `signed_in`, `coordinators` or `private`. Numbers are never part of a page; the viewer
+  presses "Show number", which is rate-limited (20/day per account, or per IP hash for visitors)
+  and audit-logged without the number. Donors whose choice predates the public option are asked
+  once on their dashboard; nothing changes unless they say yes.
 - **Search** lists only donors who opted in (`listed_in_search`), whose registration is approved
   (automatic on registration; staff can reject), with active listings and accounts, in Lakshmipur,
   and who are currently marked available. A locality

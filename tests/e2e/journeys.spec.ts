@@ -42,6 +42,23 @@ test('donor registers and is in search straight away, with privacy, and another 
   await expect(page.getByText(bn.errors.invalid_credentials)).toBeVisible();
 });
 
+test('anyone can call a donor who shows their number to everyone, without an account', async ({ page }) => {
+  const donorPhone = testPhone();
+  await registerDonor(page, { name: 'সুমাইয়া আক্তার', phone: donorPhone, group: 'B-', phoneVisibility: 'public' });
+  await signOut(page);
+
+  await page.goto('/donors?group=B-');
+  await page.locator('article', { hasText: 'সুমাইয়া আ.' }).getByRole('link').first().click();
+  // The number is not in the page until the visitor asks for it.
+  await expect(page.locator('body')).not.toContainText(donorPhone.slice(-6));
+  await expect(page.getByText(bn.donor.contactSignIn)).toHaveCount(0);
+  await page.getByRole('button', { name: bn.common.actions.showNumber }).click();
+  await expect(page.locator('.phone-reveal')).toContainText(donorPhone.slice(-6));
+  await expect(page.locator('a[href^="tel:"]')).toBeVisible();
+  // Messages through the site still need an account; calling does not.
+  await expect(page.getByRole('link', { name: bn.donor.messageSignIn })).toBeVisible();
+});
+
 test('registration shows server-side validation in Bangla', async ({ page }) => {
   await page.goto('/register');
   await page.getByRole('button', { name: bn.auth.registerButton }).click();

@@ -13,13 +13,16 @@ import { createReport } from '@/server/services/reports';
 import { f, formDataToObject, parseInput } from '@/server/validation';
 import { getI18n } from '@/i18n/server';
 
-/** Reveal a donor's number on their public profile (signed-in, consent-checked, rate limited, logged). */
+/**
+ * Reveal a donor's number on their public profile. No sign-in is needed when the donor allows
+ * anyone to see it; the service checks consent. Rate limited per account, or per IP for visitors,
+ * and logged.
+ */
 export async function revealPhoneAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const actor = await getActor();
-  if (!actor) return { status: 'error', message: await errorKeyMessage('unauthenticated'), ts: Date.now() };
   try {
     const meta = await getRequestMeta();
-    await enforceRateLimit('phoneReveal', actor.userId);
+    await enforceRateLimit('phoneReveal', actor?.userId ?? `ip:${meta.ipHash ?? 'unknown'}`);
     const result = await revealDonorPhone(actor, String(formData.get('publicId') ?? ''), meta);
     return success(undefined, { phone: formatBdPhone(result.phone), tel: result.phone, method: result.method });
   } catch (error) {

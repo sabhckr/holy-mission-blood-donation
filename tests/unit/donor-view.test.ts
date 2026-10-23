@@ -52,6 +52,13 @@ describe('projectDonor', () => {
     expect(JSON.stringify(v)).not.toContain('+880');
   });
 
+  it('lets anyone reveal a number the donor made public, without putting the number in the page', () => {
+    const v = projectDonor(facts({ phoneVisibility: 'public' }), 'anonymous');
+    expect(v.phoneAccess).toBe('reveal');
+    expect(JSON.stringify(v)).not.toContain('+880');
+    expect(projectDonor(facts({ phoneVisibility: 'public' }), 'signed_in').phoneAccess).toBe('reveal');
+  });
+
   it('lets signed-in users reveal a number only when the donor allows signed-in users', () => {
     expect(projectDonor(facts(), 'signed_in').phoneAccess).toBe('reveal');
     expect(projectDonor(facts({ phoneVisibility: 'coordinators' }), 'signed_in').phoneAccess).toBe('hidden');

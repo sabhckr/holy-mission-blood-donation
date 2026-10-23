@@ -1,8 +1,21 @@
+import { readFileSync } from 'node:fs';
 import { eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/server/db/client';
-import { auditLogs, donorProfiles, verificationEvents } from '@/server/db/schema';
-import { registerDonor, revealDonorPhone, searchDonors, getPublicDonorProfile, setAvailability, setDonorListingPaused, updateConsents, updateDonorProfile } from '@/server/services/donors';
+import { auditLogs, donorConsents, donorProfiles, verificationEvents } from '@/server/db/schema';
+import {
+  allowPublicPhone,
+  confirmPhoneChoice,
+  publicPhoneChoiceSince,
+  registerDonor,
+  revealDonorPhone,
+  searchDonors,
+  getPublicDonorProfile,
+  setAvailability,
+  setDonorListingPaused,
+  updateConsents,
+  updateDonorProfile,
+} from '@/server/services/donors';
 import { makeDonor, makeUser, nextPhone, OPEN_CONSENTS, PASSWORD, place, resetDb, moveOutsideServiceArea } from './helpers';
 
 beforeEach(resetDb);
@@ -118,10 +131,44 @@ describe('consent-aware contact visibility', () => {
     await expect(revealDonorPhone(viewer, hidden.donor.publicId)).rejects.toMatchObject({ code: 'forbidden' });
   });
 
-  it('cannot set phone visibility to public, even bypassing the form', async () => {
-    const d = await makeDonor();
-    await expect(updateConsents(d.actor, { ...OPEN_CONSENTS, phoneVisibility: 'public' as never })).rejects.toMatchObject({ code: 'validation' });
-    await expect(db.execute(sql`update donor_consents set phone_visibility = 'public'`)).rejects.toThrow();
+  it('lets visitors reveal and call a donor who chose "everyone", logged without the number', async () => {
+    const d = await makeDonor({ consents: { phoneVisibility: 'public' } });
+    expect((await getPublicDonorProfile(d.donor.publicId, null))?.phoneAccess).toBe('reveal');
+    expect(JSON.stringify(await searchDonors({}, null))).not.toContain(d.phone);
+    await expect(revealDonorPhone(null, d.donor.publicId, { ipHash: 'visitor-hash' })).resolves.toMatchObject({ phone: d.phone });
+    const [log] = await db.select().from(auditLogs).where(eq(auditLogs.action, 'donor.phone_revealed'));
+    expect(log).toMatchObject({ actorUserId: null, ipHash: 'visitor-hash', targetId: d.donor.id });
+    expect(JSON.stringify(log.metadata)).not.toContain(d.phone);
+  });
+
+  it('still needs sign-in for "signed-in only" donors, and never reveals "nobody" numbers', async () => {
+    const signedInOnly = await makeDonor({ consents: { phoneVisibility: 'signed_in' } });
+    const nobody = await makeDonor({ consents: { phoneVisibility: 'private' } });
+    await expect(revealDonorPhone(null, signedInOnly.donor.publicId)).rejects.toMatchObject({ code: 'forbidden' });
+    await expect(revealDonorPhone(null, nobody.donor.publicId)).rejects.toMatchObject({ code: 'forbidden' });
+    const { actor: viewer } = await makeUser();
+    await expect(revealDonorPhone(viewer, signedInOnly.donor.publicId)).resolves.toMatchObject({ phone: signedInOnly.phone });
+    await expect(revealDonorPhone(viewer, nobody.donor.publicId)).rejects.toMatchObject({ code: 'forbidden' });
+  });
+
+  it('existing donors decide: allowing public changes the choice, keeping it only records a fresh consent', async () => {
+    const yes = await makeDonor({ consents: { phoneVisibility: 'signed_in' } });
+    const keep = await makeDonor({ consents: { phoneVisibility: 'coordinators' } });
+    // Migration 0005 records when the choice arrived; both donors chose before that.
+    expect(await publicPhoneChoiceSince()).toBeNull();
+    await db.execute(sql.raw(readFileSync('drizzle/0005_phone_can_be_public.sql', 'utf8').split('--> statement-breakpoint')[1]));
+    const since = await publicPhoneChoiceSince();
+    expect(since).toBeInstanceOf(Date);
+    expect(yes.donor.createdAt.getTime()).toBeLessThanOrEqual(since!.getTime());
+    await allowPublicPhone(yes.actor);
+    await confirmPhoneChoice(keep.actor);
+    const consent = async (id: string) => (await db.select().from(donorConsents).where(eq(donorConsents.donorId, id)))[0];
+    expect((await consent(yes.donor.id)).phoneVisibility).toBe('public');
+    expect((await consent(keep.donor.id)).phoneVisibility).toBe('coordinators');
+    // Answered either way, the dashboard stops asking.
+    expect((await consent(yes.donor.id)).consentedAt.getTime()).toBeGreaterThanOrEqual(since!.getTime());
+    expect((await consent(keep.donor.id)).consentedAt.getTime()).toBeGreaterThanOrEqual(since!.getTime());
+    await expect(updateConsents(keep.actor, { ...OPEN_CONSENTS, phoneVisibility: 'public' })).resolves.toBeUndefined();
   });
 });
 

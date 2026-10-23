@@ -112,9 +112,9 @@ export default async function DonorProfilePage({ params }: { params: Promise<{ p
                 <Phone size={20} aria-hidden="true" />
                 {t.donor.contactTitle}
               </h2>
-              {!signedIn ? (
+              {!signedIn && donor.phoneAccess !== 'reveal' ? (
                 <>
-                  <p className="contact-lead">{t.donor.contactSignIn}</p>
+                  <p className="contact-lead">{donor.phoneAccess === 'sign_in_required' ? t.donor.contactSignIn : t.donor.contactHiddenSignIn}</p>
                   <Link className="btn btn-primary btn-lg btn-block" href={`/signin?next=${encodeURIComponent(profilePath)}`}>
                     <LogIn size={20} aria-hidden="true" />
                     {t.common.nav.signIn}
@@ -137,7 +137,12 @@ export default async function DonorProfilePage({ params }: { params: Promise<{ p
                       whatsapp: t.common.actions.whatsapp,
                     }}
                   />
-                  {donor.canSendContactRequest && (
+                  {!signedIn && (
+                    <p className="small text-center" style={{ margin: 0 }}>
+                      <Link href={`/signin?next=${encodeURIComponent(profilePath)}`}>{t.donor.messageSignIn}</Link>
+                    </p>
+                  )}
+                  {signedIn && donor.canSendContactRequest && (
                     <details className="disclosure">
                       <summary>
                         <span className="pub-summary">

@@ -22,6 +22,13 @@
   rows get the note "Approved automatically: donors no longer need approval", and the migration
   file shows the one statement that reverses it.
 
+- Migration `0005_phone_can_be_public` drops the database rule that kept phone numbers from being
+  `public`, so donors can let anyone call them without signing in. Existing choices are not
+  changed. It also stores the time it ran in `settings` (`public_phone_since`): donors whose
+  choice is older are asked once on their dashboard, and answering either way ends the question.
+  To undo: `ALTER TABLE donor_consents ADD CONSTRAINT donor_consents_phone_not_public
+  CHECK (phone_visibility <> 'public')` after moving any `public` rows back.
+
 ## Making someone an admin on the live site
 
 No password is needed:

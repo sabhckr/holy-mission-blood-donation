@@ -18,6 +18,7 @@ import {
   Hourglass,
   Inbox,
   LockKeyhole,
+  Phone,
   Search,
   ShieldCheck,
   Siren,
@@ -27,7 +28,7 @@ import {
 import { getI18n, type I18n } from '@/i18n/server';
 import { requireActor } from '@/server/auth/current';
 import { pendingIncomingCount } from '@/server/services/contact';
-import { getOwnDonorOverview } from '@/server/services/donors';
+import { getOwnDonorOverview, publicPhoneChoiceSince } from '@/server/services/donors';
 import { getServiceArea } from '@/server/services/service-area';
 import { getLocationIndex, labelFrom } from '@/server/services/location-index';
 import { unreadCount } from '@/server/services/notifications';
@@ -38,7 +39,7 @@ import { EligibilityCard } from '@/components/account/EligibilityCard';
 import { Avatar, IconTile, PageHead, type IconTone } from '@/components/account/bits';
 import { Alert, AvailabilityBadge, Badge, BloodGroupBadge } from '@/components/ui';
 import { STATUS_TONE } from '@/components/request/RequestCard';
-import { reactivateAction, setAvailabilityAction, setListingPausedAction } from './actions';
+import { allowPublicPhoneAction, keepPhoneChoiceAction, reactivateAction, setAvailabilityAction, setListingPausedAction } from './actions';
 
 type Overview = NonNullable<Awaited<ReturnType<typeof getOwnDonorOverview>>>;
 type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
@@ -169,12 +170,12 @@ function NextStep({ o, i18n }: { o: Overview; i18n: I18n }) {
   return null;
 }
 
-export default async function AccountDashboard({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
+export default async function AccountDashboard({ searchParams }: { searchParams: Promise<{ welcome?: string; phone?: string }> }) {
   const i18n = await getI18n();
   const { t, n, date, instantDate, locale } = i18n;
   const d = t.account.dashboard;
   const actor = await requireActor('/account', { allowDeactivated: true });
-  const { welcome } = await searchParams;
+  const { welcome, phone } = await searchParams;
 
   if (actor.status === 'deactivated') {
     return (
@@ -190,7 +191,7 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
     );
   }
 
-  const [overview, pendingContacts, unread, requests, offers, deletion, index] = await Promise.all([
+  const [overview, pendingContacts, unread, requests, offers, deletion, index, phoneChoiceSince] = await Promise.all([
     getOwnDonorOverview(actor),
     pendingIncomingCount(actor),
     unreadCount(actor.userId),
@@ -198,6 +199,7 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
     myResponses(actor),
     myDeletionRequest(actor),
     getLocationIndex(),
+    publicPhoneChoiceSince(),
   ]);
   const outsideArea = !!overview && overview.donor.districtId !== (await getServiceArea()).districtId;
   const staffHidden = !!overview && (overview.donor.status === 'restricted' || overview.donor.status === 'removed');
@@ -235,6 +237,11 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
       {welcome === '1' && (
         <Alert tone="success" title={d.welcomeTitle}>
           <p>{d.welcomeBody}</p>
+        </Alert>
+      )}
+      {(phone === 'public' || phone === 'kept') && (
+        <Alert tone="success">
+          <p>{phone === 'public' ? d.publicPhoneDone : d.publicPhoneKept}</p>
         </Alert>
       )}
       {outsideArea && (
@@ -376,6 +383,28 @@ export default async function AccountDashboard({ searchParams }: { searchParams:
           </section>
 
           <NextStep o={overview} i18n={i18n} />
+
+          {overview.consents.listedInSearch &&
+            overview.donor.status === 'active' &&
+            (overview.consents.phoneVisibility === 'signed_in' || overview.consents.phoneVisibility === 'coordinators') &&
+            phoneChoiceSince !== null &&
+            overview.consents.consentedAt < phoneChoiceSince && (
+              <section className="card card-accent stack-sm" aria-labelledby="public-phone-title">
+                <div className="acct-card-head">
+                  <IconTile icon={Phone} />
+                  <h2 id="public-phone-title">{d.publicPhoneTitle}</h2>
+                </div>
+                <p style={{ margin: 0 }}>{d.publicPhoneBody(t.common.visibility[overview.consents.phoneVisibility])}</p>
+                <div className="cluster-sm">
+                  <ActionForm action={allowPublicPhoneAction}>
+                    <SubmitButton label={d.publicPhoneButton} pendingLabel={t.common.actions.saving} className="btn btn-primary" />
+                  </ActionForm>
+                  <ActionForm action={keepPhoneChoiceAction}>
+                    <SubmitButton label={d.publicPhoneKeep} pendingLabel={t.common.actions.saving} className="btn" />
+                  </ActionForm>
+                </div>
+              </section>
+            )}
 
           <div className="grid grid-2" style={{ alignItems: 'start' }}>
             <EligibilityCard estimate={overview.estimate} i18n={i18n} intervals={overview.settings.eligibilityIntervals} />

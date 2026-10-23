@@ -14,6 +14,8 @@ import { leaveCommunity } from '@/server/services/communities';
 import { cancelContactRequest, respondToContactRequest } from '@/server/services/contact';
 import { addOwnDonation, correctDonation, submitDonationForReview, voidDonation } from '@/server/services/donations';
 import {
+  allowPublicPhone,
+  confirmPhoneChoice,
   createDonorProfile,
   requestProfileVerification,
   setAvailability,
@@ -82,6 +84,37 @@ export async function setListingPausedAction(_prev: FormState, formData: FormDat
       return failure(error);
     }
   });
+}
+
+/** One tap: let anyone see the donor's number and call without signing in. */
+export async function allowPublicPhoneAction(): Promise<FormState> {
+  const result = await withActor(async (actor) => {
+    try {
+      await allowPublicPhone(actor, await getRequestMeta());
+      refresh();
+      return { status: 'success', ts: Date.now() } satisfies FormState;
+    } catch (error) {
+      return failure(error);
+    }
+  });
+  // The prompt card disappears once answered, so the confirmation is shown on the dashboard itself.
+  if (result.status === 'success') redirect('/account?phone=public');
+  return result;
+}
+
+/** The donor keeps their phone choice; the dashboard stops asking. */
+export async function keepPhoneChoiceAction(): Promise<FormState> {
+  const result = await withActor(async (actor) => {
+    try {
+      await confirmPhoneChoice(actor, await getRequestMeta());
+      refresh();
+      return { status: 'success', ts: Date.now() } satisfies FormState;
+    } catch (error) {
+      return failure(error);
+    }
+  });
+  if (result.status === 'success') redirect('/account?phone=kept');
+  return result;
 }
 
 // ---------------------------------------------------------------------------

@@ -93,7 +93,7 @@ export default async function RegisterDonorPage() {
                 defaults={{
                   listedInSearch: false,
                   nameVisibility: 'signed_in',
-                  phoneVisibility: 'coordinators',
+                  phoneVisibility: 'public',
                   localityVisibility: 'public',
                   donationHistoryVisibility: 'signed_in',
                   communityVisibility: 'public',

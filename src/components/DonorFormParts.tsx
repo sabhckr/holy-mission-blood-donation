@@ -42,7 +42,8 @@ export interface ConsentDefaults {
  */
 export function ConsentFields({ labels, defaults, layout = 'list' }: { labels: ConsentLabels; defaults: ConsentDefaults; layout?: 'list' | 'grouped' | 'simple' }) {
   const all: Option[] = (['public', 'signed_in', 'coordinators', 'private'] as const).map((v) => ({ value: v, label: labels.visibility[v] }));
-  const phone = all.filter((o) => o.value !== 'public');
+  // Phone: "everyone" means anyone can tap "show number" without signing in (still logged).
+  const phone = all;
   const listed = <CheckboxField name="listedInSearch" label={labels.listedInSearch} hint={labels.listedInSearchHint} defaultChecked={defaults.listedInSearch} />;
   const selects = (
     <>

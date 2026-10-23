@@ -284,7 +284,7 @@ export const donorConsents = pgTable('donor_consents', {
   policyVersion: text('policy_version').notNull(),
   consentedAt: timestamp('consented_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: updatedAt(),
-}, (t) => [check('donor_consents_phone_not_public', sql`${t.phoneVisibility} <> 'public'`)]);
+});
 
 export const availabilityUpdates = pgTable(
   'availability_updates',

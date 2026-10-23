@@ -10,7 +10,8 @@ export type ContactMethod = (typeof CONTACT_METHODS)[number];
 export const VISIBILITIES = ['public', 'signed_in', 'coordinators', 'private'] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
 /** Phone numbers can never be shown to anonymous visitors. */
-export const PHONE_VISIBILITIES = ['signed_in', 'coordinators', 'private'] as const;
+/** 'public' = anyone can tap "show number" without signing in (the donor's choice; still logged and rate limited). */
+export const PHONE_VISIBILITIES = ['public', 'signed_in', 'coordinators', 'private'] as const;
 
 export const URGENCIES = ['critical', 'urgent', 'normal'] as const;
 export type Urgency = (typeof URGENCIES)[number];

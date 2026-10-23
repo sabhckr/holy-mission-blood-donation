@@ -27,7 +27,7 @@ export const help = defineMessages({
     findSteps: [
       '"রক্তদাতা খুঁজুন" পাতায় গিয়ে রক্তের গ্রুপ আর জেলা/উপজেলা বেছে নিন।',
       'সেখানে শুধু অনুমোদিত রক্তদাতাদের দেখানো হয়, যাঁরা সম্প্রতি জানিয়েছেন রক্ত দিতে পারবেন।',
-      'ফোন নম্বর দেখতে লগ ইন করতে হয়। অনেকে নম্বর দেখানোর অনুমতি দেন না। তাঁদের যোগাযোগের অনুরোধ পাঠান।',
+      'রক্তদাতা রাজি থাকলে লগ ইন ছাড়াই তাঁর নম্বর দেখে কল করতে পারবেন। কেউ কেউ নম্বর শুধু লগ ইন করা মানুষকে দেখান, কেউ একদম দেখান না। তাঁদের যোগাযোগের অনুরোধ পাঠান।',
       'কাউকে না পেলে আশপাশের বড় এলাকায় খুঁজুন, এলাকার সংগঠনের সাহায্য নিন, অথবা রক্তের অনুরোধ করুন।',
     ],
     eligibilityTitle: 'আবার কবে রক্ত দেওয়া যাবে — আনুমানিক হিসাব',
@@ -76,7 +76,7 @@ export const help = defineMessages({
     findSteps: [
       'On "Find donors", choose a blood group and a district/upazila.',
       'Only approved donors who recently said they can donate are shown there.',
-      'You must sign in to see phone numbers. Many donors do not allow their number to be shown — send them a contact request instead.',
+      'Where the donor allows it, you can see their number and call without signing in. Some donors show it to signed-in people only, and some not at all — send them a contact request instead.',
       'If nobody is found, search a wider area, ask a local organisation, or request blood.',
     ],
     eligibilityTitle: 'When can I donate again — the estimate',

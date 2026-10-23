@@ -93,9 +93,10 @@ export function projectDonor(donor: DonorFacts, viewer: ViewerLevel): DonorView 
   const showLocality = canSee(c.localityVisibility, viewer);
   let phoneAccess: PhoneAccess = 'hidden';
   if (isOwner) phoneAccess = 'owner';
-  else if (c.phoneVisibility !== 'private' && c.phoneVisibility !== 'public') {
-    // 'signed_in' numbers can be revealed (logged, rate limited) by signed-in users;
-    // 'coordinators' numbers only by coordinator-level viewers.
+  else if (c.phoneVisibility !== 'private') {
+    // 'public' numbers can be revealed by anyone, without signing in; 'signed_in' numbers by
+    // signed-in users; 'coordinators' numbers only by coordinator-level viewers. Every reveal is
+    // logged and rate limited, and the number is never part of the page itself.
     if (canSee(c.phoneVisibility, viewer)) phoneAccess = 'reveal';
     else if (viewer === 'anonymous' && c.phoneVisibility === 'signed_in') phoneAccess = 'sign_in_required';
   }

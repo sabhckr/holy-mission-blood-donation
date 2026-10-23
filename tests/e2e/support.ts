@@ -22,7 +22,7 @@ export function testPhone(): string {
   return `0177${String(Math.floor(Math.random() * 90_000) + 10_000)}${String(counter).padStart(2, '0')}`;
 }
 
-export async function registerDonor(page: Page, opts: { name: string; phone: string; group?: string }) {
+export async function registerDonor(page: Page, opts: { name: string; phone: string; group?: string; phoneVisibility?: 'public' | 'signed_in' }) {
   const t = bn;
   await page.goto('/register');
   await page.getByLabel(L(t.auth.fullName)).fill(opts.name);
@@ -35,7 +35,7 @@ export async function registerDonor(page: Page, opts: { name: string; phone: str
   await page.getByLabel(L(t.common.location.upazila)).selectOption({ label: 'রায়পুর' });
   await page.getByLabel(L(t.auth.availableNow)).check();
   await page.getByLabel(L(t.auth.listedInSearch)).check();
-  await page.getByLabel(L(t.auth.phoneVisibility)).selectOption('signed_in');
+  await page.getByLabel(L(t.auth.phoneVisibility)).selectOption(opts.phoneVisibility ?? 'signed_in');
   await page.getByLabel(Lp(t.auth.acceptPrivacy)).check();
   await page.getByLabel(L(t.auth.confirmTruth)).check();
   await page.getByRole('button', { name: t.auth.registerButton }).click();
