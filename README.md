@@ -1,4 +1,4 @@
-# Holy Mission Blood Donation
+# Lakshmipur Blood Donation
 
 **রক্ত লাইগলে রক্ত আছে, এত ডরানোর কী আছে?**
 *(Need blood? There is blood. No need to be afraid.)*
@@ -10,12 +10,12 @@ blood group and area, post requests, and get help from local blood donation orga
 This is a community coordination tool. It is **not** a hospital or blood bank, and it never
 decides whether someone is medically eligible to donate.
 
-**Lakshmipur only.** Holy Mission Blood Donation works in **Lakshmipur district** only. Donor
+**Lakshmipur only.** Lakshmipur Blood Donation works in **Lakshmipur district** only. Donor
 registration, donor search, blood requests and organisations are limited to Lakshmipur and its
 five upazilas, and the services enforce this on the server (`src/server/services/service-area.ts`),
 not just in the forms. Records saved before this rule are kept but hidden from the public and
 flagged for staff; `npm run report:service-area` counts them (read-only). Registering never makes
-an organisation a Holy Mission branch. See [docs/STATUSES.md](docs/STATUSES.md)
+an organisation a Lakshmipur Blood Donation branch. See [docs/STATUSES.md](docs/STATUSES.md)
 for how operating area, donor area, registration review, listing, availability, verification and
 medical eligibility are kept apart.
 

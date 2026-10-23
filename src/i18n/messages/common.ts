@@ -2,11 +2,11 @@ import { defineMessages } from '../define';
 
 export const common = defineMessages({
   bn: {
-    brand: 'হলি মিশন ব্লাড ডোনেশন',
-    brandShort: 'হলি মিশন',
+    brand: 'লক্ষ্মীপুর ব্লাড ডোনেশন',
+    brandShort: 'লক্ষ্মীপুর ব্লাড ডোনেশন',
     brandSub: 'ব্লাড ডোনেশন',
     /** Logo lockup, the same in both languages. */
-    logoName: 'Holy Mission',
+    logoName: 'Lakshmipur',
     logoSub: 'BLOOD DONATION',
     /** The official slogan — never change this wording. */
     slogan: 'রক্ত লাইগলে রক্ত আছে, এত ডরানোর কী আছে?',
@@ -42,7 +42,7 @@ export const common = defineMessages({
     },
     footer: {
       safety: 'জরুরি হলে আগে কাছের হাসপাতাল বা ব্লাড ব্যাংকে যোগাযোগ করুন। রক্তের জন্য টাকা দেবেন না, নেবেনও না।',
-      copyright: (year: string) => `© ${year} Holy Mission Blood Donation`,
+      copyright: (year: string) => `© ${year} Lakshmipur Blood Donation`,
       about: 'লক্ষ্মীপুরের স্বেচ্ছায় রক্তদাতা আর রক্তদানের সংগঠনগুলোকে এক জায়গায় আনার একটি সামাজিক উদ্যোগ।',
       links: 'দরকারি লিংক',
       contact: 'যোগাযোগ',
@@ -131,13 +131,13 @@ export const common = defineMessages({
     },
     affiliation: {
       independent: 'স্বতন্ত্র সংগঠন',
-      holy_mission: 'হলি মিশনের নিজস্ব',
-      independentNote: 'এটি একটি স্বতন্ত্র সংগঠন। এই ওয়েবসাইটে যুক্ত আছে, তবে হলি মিশনের কোনো শাখা নয়।',
-      holyMissionNote: 'এটি হলি মিশন ব্লাড ডোনেশনের নিজস্ব কার্যক্রম।',
+      holy_mission: 'লক্ষ্মীপুর ব্লাড ডোনেশনের নিজস্ব',
+      independentNote: 'এটি একটি স্বতন্ত্র সংগঠন। এই ওয়েবসাইটে যুক্ত আছে, তবে লক্ষ্মীপুর ব্লাড ডোনেশনের কোনো শাখা নয়।',
+      holyMissionNote: 'এটি লক্ষ্মীপুর ব্লাড ডোনেশনের নিজস্ব কার্যক্রম।',
     },
     operatingArea: {
       title: 'আমাদের কাজের এলাকা',
-      notice: 'হলি মিশন ব্লাড ডোনেশন শুধু লক্ষ্মীপুর জেলায় কাজ করে। নিবন্ধন, রক্তদাতা খোঁজা আর রক্তের অনুরোধ — সবই লক্ষ্মীপুরের জন্য।',
+      notice: 'লক্ষ্মীপুর ব্লাড ডোনেশন শুধু লক্ষ্মীপুর জেলায় কাজ করে। নিবন্ধন, রক্তদাতা খোঁজা আর রক্তের অনুরোধ — সবই লক্ষ্মীপুরের জন্য।',
       short: 'আমরা শুধু লক্ষ্মীপুর জেলায় কাজ করি।',
       and: ' ও ',
       upazilaName: (upazila: string, district: string) => `${district} জেলার ${upazila}`,
@@ -277,10 +277,10 @@ export const common = defineMessages({
     },
   },
   en: {
-    brand: 'Holy Mission Blood Donation',
-    brandShort: 'Holy Mission',
+    brand: 'Lakshmipur Blood Donation',
+    brandShort: 'Lakshmipur Blood Donation',
     brandSub: 'Blood Donation',
-    logoName: 'Holy Mission',
+    logoName: 'Lakshmipur',
     logoSub: 'BLOOD DONATION',
     slogan: 'রক্ত লাইগলে রক্ত আছে, এত ডরানোর কী আছে?',
     sloganMeaning: 'Need blood? There is blood. No need to be afraid.',
@@ -315,7 +315,7 @@ export const common = defineMessages({
     },
     footer: {
       safety: 'In an emergency, contact the nearest hospital or blood bank first. Never pay or take money for blood.',
-      copyright: (year: string) => `© ${year} Holy Mission Blood Donation`,
+      copyright: (year: string) => `© ${year} Lakshmipur Blood Donation`,
       about: 'A community initiative that brings voluntary blood donors and blood donation organisations together in one place.',
       links: 'Useful links',
       contact: 'Contact',
@@ -404,13 +404,13 @@ export const common = defineMessages({
     },
     affiliation: {
       independent: 'Independent organisation',
-      holy_mission: 'Part of Holy Mission',
-      independentNote: 'This is an independent organisation. It uses this platform but is not a Holy Mission branch.',
-      holyMissionNote: 'This is Holy Mission Blood Donation’s own activity.',
+      holy_mission: 'Part of Lakshmipur Blood Donation',
+      independentNote: 'This is an independent organisation. It uses this platform but is not a Lakshmipur Blood Donation branch.',
+      holyMissionNote: 'This is Lakshmipur Blood Donation’s own activity.',
     },
     operatingArea: {
       title: 'Where we work',
-      notice: 'Holy Mission Blood Donation works in Lakshmipur district only. Sign-up, donor search and blood requests are all for Lakshmipur.',
+      notice: 'Lakshmipur Blood Donation works in Lakshmipur district only. Sign-up, donor search and blood requests are all for Lakshmipur.',
       short: 'We work in Lakshmipur district only.',
       and: ' and ',
       upazilaName: (upazila: string, district: string) => `${upazila} (${district})`,

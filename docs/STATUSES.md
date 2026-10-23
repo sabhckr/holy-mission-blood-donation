@@ -1,18 +1,18 @@
 # Separate concepts, separate fields
 
-Holy Mission keeps several ideas apart on purpose. None of them implies another.
+Lakshmipur Blood Donation keeps several ideas apart on purpose. None of them implies another.
 
 | Concept | Where it lives | Values | Who changes it |
 |---|---|---|---|
 | **Service area (fixed policy)** | `src/server/services/service-area.ts` (Lakshmipur, location code `dist-7`) | Lakshmipur district and its five upazilas only | Nobody in the app; it is a code-level rule enforced by every service and public query. |
-| **Holy Mission's operating areas** | `operating_areas` (linked to `locations`) | active / inactive per area, inside Lakshmipur only. Initially **Lakshmipur district**. | Admins only (`operating_areas.manage`), with a reason; audit-logged. |
+| **Lakshmipur Blood Donation's operating areas** | `operating_areas` (linked to `locations`) | active / inactive per area, inside Lakshmipur only. Initially **Lakshmipur district**. | Admins only (`operating_areas.manage`), with a reason; audit-logged. |
 | **Donor's area** | `donor_profiles.division_id / district_id / upazila_id / locality` | Lakshmipur district (upazila optional) | The donor; staff can correct it with a reason. Older records outside Lakshmipur are kept, hidden from the public, cannot be approved, and are listed for staff at `/admin/donors?area=outside`. |
 | **Organisation's area** | `communities.division_id / district_id` + `community_service_areas` | head office in Lakshmipur; serves Lakshmipur or its upazilas | The organisation's leader. Older organisations based elsewhere are hidden from the directory and cannot be approved. |
 | **Blood request date** | `blood_requests.needed_at` | today through 15 days ahead, inclusive, Bangladesh time (a time earlier today is accepted for 6 hours) | The requester; checked by `domain/booking.ts` on the server. |
 | **Donor offer on a request** | `request_responses.status` | offered → confirmed / declined (requester or coordinator), withdrawn (donor) | Confirming checks the donor's estimated next donation date and that they are not confirmed on another open request; the donor is notified either way. |
 | **Blood request location** | `blood_requests.division_id / district_id / upazila_id` | Lakshmipur district | The requester. Older requests elsewhere are hidden from the public board; their private link still works. |
 | **Organisation status** | `communities.status` | pending → approved / rejected; approved ↔ suspended | Admins (`communities.review`). "Approved" is the only state shown as reviewed/verified. |
-| **Organisation affiliation** | `communities.affiliation` | `independent` (default) / `holy_mission` | Admins only, with a reason, and only for approved organisations. Registering never makes an organisation part of Holy Mission. |
+| **Organisation affiliation** | `communities.affiliation` | `independent` (default) / `holy_mission` | Admins only, with a reason, and only for approved organisations. Registering never makes an organisation part of Lakshmipur Blood Donation. |
 | **Donor registration status** | `donor_profiles.registration_status` | approved as soon as the donor registers (no review step); staff can reject; a corrected rejected profile returns to pending for a staff decision | Staff (`donors.review`) for rejections and re-reviews; never their own record. |
 | **Donor listing status** | `donor_profiles.status` | active, paused (by the donor), restricted (deactivated by staff), removed (by staff, restorable) | Donor pauses/resumes; staff deactivate/remove/restore with a reason. Donors cannot undo staff decisions. |
 | **Search consent** | `donor_consents.listed_in_search` (+ per-field visibility) | yes / no | The donor. |

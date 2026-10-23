@@ -9,7 +9,7 @@ import { audit } from './audit';
 import { withinServiceArea } from './service-area';
 
 /**
- * Holy Mission's official operating areas: Lakshmipur district and, where useful, the upazilas
+ * Lakshmipur Blood Donation's official operating areas: Lakshmipur district and, where useful, the upazilas
  * inside it where the team is active. Nothing outside Lakshmipur can be added.
  */
 export interface OperatingAreaRow {

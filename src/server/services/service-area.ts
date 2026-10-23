@@ -3,7 +3,7 @@ import { db, type Executor } from '../db/client';
 import { locations } from '../db/schema';
 
 /**
- * Holy Mission Blood Donation works in Lakshmipur district only. Donor registration, donor
+ * Lakshmipur Blood Donation works in Lakshmipur district only. Donor registration, donor
  * search, blood requests and organisations are limited to Lakshmipur, and the services check
  * this on every write and every public read — the forms only make it easy to comply.
  *

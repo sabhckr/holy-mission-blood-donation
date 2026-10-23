@@ -59,9 +59,9 @@ export const legal = defineMessages({
       {
         heading: 'এই ওয়েবসাইট কী',
         body: [
-          'হলি মিশন ব্লাড ডোনেশন একটি সামাজিক উদ্যোগ। এই ওয়েবসাইট স্বেচ্ছায় রক্তদাতা, যাঁদের রক্ত দরকার, আর রক্তদানের সংগঠনগুলোর মধ্যে যোগাযোগ করিয়ে দেয়। এটি কোনো হাসপাতাল, ব্লাড ব্যাংক বা চিকিৎসাসেবা নয়।',
+          'লক্ষ্মীপুর ব্লাড ডোনেশন একটি সামাজিক উদ্যোগ। এই ওয়েবসাইট স্বেচ্ছায় রক্তদাতা, যাঁদের রক্ত দরকার, আর রক্তদানের সংগঠনগুলোর মধ্যে যোগাযোগ করিয়ে দেয়। এটি কোনো হাসপাতাল, ব্লাড ব্যাংক বা চিকিৎসাসেবা নয়।',
           'এই ওয়েবসাইট শুধু লক্ষ্মীপুর জেলার জন্য। রক্তদাতা নিবন্ধন, রক্তদাতা খোঁজা, রক্তের অনুরোধ আর সংগঠন — সবই লক্ষ্মীপুরের ঠিকানায়।',
-          'এখানে নিবন্ধিত স্বতন্ত্র সংগঠনগুলো হলি মিশনের শাখা নয়।',
+          'এখানে নিবন্ধিত স্বতন্ত্র সংগঠনগুলো লক্ষ্মীপুর ব্লাড ডোনেশনের শাখা নয়।',
         ],
       },
       { heading: 'চিকিৎসা নিয়ে সতর্কতা', body: ['এখানে দেখানো "রক্ত দিতে পারবেন" বা "আবার রক্ত দেওয়ার আনুমানিক তারিখ" দেখে বোঝা যায় না যে কেউ শারীরিকভাবে রক্ত দেওয়ার উপযুক্ত। রক্ত দেওয়া-নেওয়ার আগে হাসপাতাল বা লাইসেন্সপ্রাপ্ত ব্লাড ব্যাংকে অবশ্যই রক্ত পরীক্ষা করাতে হবে।'] },
@@ -126,9 +126,9 @@ export const legal = defineMessages({
       {
         heading: 'What this website is',
         body: [
-          'Holy Mission Blood Donation is a community initiative. This platform connects voluntary blood donors, people who need blood, and blood donation organisations. It is not a hospital, blood bank or medical service.',
+          'Lakshmipur Blood Donation is a community initiative. This platform connects voluntary blood donors, people who need blood, and blood donation organisations. It is not a hospital, blood bank or medical service.',
           'This platform is for Lakshmipur district only: donor registration, donor search, blood requests and organisations all use addresses in Lakshmipur.',
-          'Independent organisations registered here are not Holy Mission branches.',
+          'Independent organisations registered here are not Lakshmipur Blood Donation branches.',
         ],
       },
       { heading: 'Medical caution', body: ['The "can donate" status and the "estimated next donation date" shown here are not proof of medical eligibility. Blood must always be tested at a hospital or licensed blood bank before it is given.'] },

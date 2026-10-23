@@ -592,7 +592,7 @@ export async function communityReport(actor: Actor, communityId: string) {
 }
 
 /**
- * Marks an organisation as part of Holy Mission itself, or as independent. Only platform admins
+ * Marks an organisation as part of Lakshmipur Blood Donation itself, or as independent. Only platform admins
  * can do this, with a reason; registering on the platform never changes it.
  */
 export async function setCommunityAffiliation(actor: Actor, communityId: string, affiliation: 'independent' | 'holy_mission', reason: string, meta: ClientMeta = {}) {

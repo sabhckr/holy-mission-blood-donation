@@ -26,7 +26,7 @@ export function CommunityStatusBadge({ status, t, withLabel }: { status: Communi
   );
 }
 
-/** "Holy Mission's own" only for affiliation holy_mission; everything else is "independent". */
+/** "Lakshmipur Blood Donation's own" only for affiliation holy_mission; everything else is "independent". */
 export function AffiliationBadge({ affiliation, t }: { affiliation: 'independent' | 'holy_mission'; t: Messages }) {
   const holyMission = affiliation === 'holy_mission';
   const Icon = holyMission ? HeartHandshake : Building2;

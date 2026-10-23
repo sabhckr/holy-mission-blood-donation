@@ -16,7 +16,7 @@ export const account = defineMessages({
     },
     dashboard: {
       outsideTitle: 'আপনার ঠিকানা লক্ষ্মীপুরের বাইরে',
-      outsideBody: 'হলি মিশন ব্লাড ডোনেশন এখন শুধু লক্ষ্মীপুর জেলায় কাজ করে, তাই খোঁজার ফলাফলে আপনাকে দেখানো হচ্ছে না। আপনি লক্ষ্মীপুরে থাকলে প্রোফাইলে ঠিকানাটি ঠিক করে দিন।',
+      outsideBody: 'লক্ষ্মীপুর ব্লাড ডোনেশন এখন শুধু লক্ষ্মীপুর জেলায় কাজ করে, তাই খোঁজার ফলাফলে আপনাকে দেখানো হচ্ছে না। আপনি লক্ষ্মীপুরে থাকলে প্রোফাইলে ঠিকানাটি ঠিক করে দিন।',
       outsideAction: 'ঠিকানা ঠিক করুন',
       title: 'আমার অ্যাকাউন্ট',
       hello: (name: string) => `স্বাগতম, ${name}`,
@@ -372,7 +372,7 @@ export const account = defineMessages({
     },
     dashboard: {
       outsideTitle: 'Your address is outside Lakshmipur',
-      outsideBody: 'Holy Mission Blood Donation now works in Lakshmipur district only, so you are not shown in search. If you live in Lakshmipur, correct your address in your profile.',
+      outsideBody: 'Lakshmipur Blood Donation now works in Lakshmipur district only, so you are not shown in search. If you live in Lakshmipur, correct your address in your profile.',
       outsideAction: 'Correct my address',
       title: 'My account',
       hello: (name: string) => `Welcome, ${name}`,

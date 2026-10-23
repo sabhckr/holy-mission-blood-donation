@@ -48,7 +48,7 @@ export const donorProfileStatus = pgEnum('donor_profile_status', ['active', 'pau
 export const registrationStatus = pgEnum('registration_status', ['pending', 'approved', 'rejected']);
 /** Who last set a donor's availability: the donor themself or platform staff (an override). */
 export const availabilitySource = pgEnum('availability_source', ['donor', 'staff']);
-/** Whether an organisation is part of Holy Mission itself; registering never makes it so. */
+/** Whether an organisation is part of Lakshmipur Blood Donation itself; registering never makes it so. */
 export const communityAffiliation = pgEnum('community_affiliation', ['independent', 'holy_mission']);
 export const verificationStatus = pgEnum('verification_status', ['unverified', 'pending', 'verified', 'rejected']);
 /** Who may see a category of donor information. 'public' = anyone, 'signed_in' = any signed-in account,
@@ -178,7 +178,7 @@ export const locations = pgTable(
 );
 
 /**
- * Holy Mission's own official operating areas (initially Lakshmipur district only). This is
+ * Lakshmipur Blood Donation's own official operating areas (initially Lakshmipur district only). This is
  * deliberately separate from where donors and organisations are located: the platform accepts
  * donors and organisations from all of Bangladesh. Changes are audit-logged.
  */
@@ -399,7 +399,7 @@ export const communities = pgTable(
     foundedYear: smallint('founded_year'),
     status: communityStatus('status').notNull().default('pending'),
     statusReason: text('status_reason'),
-    /** Only platform admins can mark an organisation as part of Holy Mission. */
+    /** Only platform admins can mark an organisation as part of Lakshmipur Blood Donation. */
     affiliation: communityAffiliation('affiliation').notNull().default('independent'),
     divisionId: integer('division_id')
       .notNull()

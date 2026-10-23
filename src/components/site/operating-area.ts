@@ -7,7 +7,7 @@ import { listOperatingAreas } from '@/server/services/operating-areas';
 const activeAreas = cache(() => listOperatingAreas({ activeOnly: true }));
 
 export interface OperatingAreaSummary {
-  /** The full public sentence, e.g. "হলি মিশন ব্লাড ডোনেশনের বর্তমান কার্যক্রম লক্ষ্মীপুরে। …" */
+  /** The full public sentence, e.g. "লক্ষ্মীপুর ব্লাড ডোনেশন শুধু লক্ষ্মীপুর জেলায় কাজ করে। …" */
   sentence: string;
   /** Optional public notes an administrator added to an area. */
   notes: string[];
@@ -15,7 +15,7 @@ export interface OperatingAreaSummary {
 }
 
 /**
- * Holy Mission's own official operating area(s), straight from the database. This is never
+ * Lakshmipur Blood Donation's own official operating area(s), straight from the database. This is never
  * where donors or organisations may come from. The public sentence is the fixed Lakshmipur-only policy.
  */
 export async function operatingAreaSummary(locale: Locale, t: Messages): Promise<OperatingAreaSummary> {
